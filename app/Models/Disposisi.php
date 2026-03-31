@@ -5,9 +5,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Disposisi extends Model
 {
+    use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['status', 'instruksi', 'ke_user_id', 'ke_unit_id', 'parent_id'])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(fn(string $eventName) => "Disposisi {$eventName}")
+            ->useLogName('disposisi');
+    }
     protected $fillable = [
         'surat_masuk_id',
         'dari_user_id',
@@ -17,6 +29,7 @@ class Disposisi extends Model
         'catatan',
         'batas_waktu',
         'status',
+        'is_tembusan',
         'parent_id',
     ];
 
@@ -60,6 +73,47 @@ class Disposisi extends Model
     public function children(): HasMany
     {
         return $this->hasMany(Disposisi::class, 'parent_id');
+    }
+
+    public function childrenRecursive(): HasMany
+    {
+        return $this->children()->with('childrenRecursive', 'keUser', 'keUnit', 'dariUser');
+    }
+
+    /**
+     * Get the disposisi level (1 = root, 2 = first forward, etc.)
+     */
+    public function getLevel(): int
+    {
+        $level = 1;
+        $current = $this;
+        while ($current->parent_id) {
+            $level++;
+            $current = $current->parent;
+        }
+        return $level;
+    }
+
+    /**
+     * Get the root disposisi of this chain.
+     */
+    public function getRoot(): self
+    {
+        $current = $this;
+        while ($current->parent_id) {
+            $current = $current->parent;
+        }
+        return $current;
+    }
+
+    /**
+     * Get full chain from root with all children recursively loaded.
+     */
+    public function getFullChain(): self
+    {
+        $root = $this->getRoot();
+        $root->load('childrenRecursive', 'dariUser', 'keUser', 'keUnit', 'suratMasuk');
+        return $root;
     }
 
     /**

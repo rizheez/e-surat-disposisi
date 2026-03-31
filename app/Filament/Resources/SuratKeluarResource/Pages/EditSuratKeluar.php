@@ -13,6 +13,13 @@ class EditSuratKeluar extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('previewPdf')
+                ->label('Preview PDF')
+                ->icon('heroicon-o-eye')
+                ->color('info')
+                ->url(fn () => route('pdf.surat-keluar.preview', $this->record))
+                ->openUrlInNewTab()
+                ->visible(fn () => filled($this->record->isi_surat)),
             Actions\DeleteAction::make(),
         ];
     }

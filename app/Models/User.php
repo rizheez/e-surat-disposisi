@@ -40,7 +40,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return true;
+        return $this->hasAnyRole(['admin', 'pimpinan', 'sekretaris', 'staf']);
     }
 
     public function unitKerja(): BelongsTo

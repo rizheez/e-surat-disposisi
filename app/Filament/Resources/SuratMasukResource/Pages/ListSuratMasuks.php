@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SuratMasukResource\Pages;
 
+use App\Filament\Exports\SuratMasukExporter;
 use App\Filament\Resources\SuratMasukResource;
 use Filament\Resources\Pages\ListRecords;
 
@@ -12,6 +13,11 @@ class ListSuratMasuks extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            \Filament\Actions\ExportAction::make()
+                ->exporter(SuratMasukExporter::class)
+                ->label('Export')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('success'),
             \Filament\Actions\CreateAction::make(),
         ];
     }

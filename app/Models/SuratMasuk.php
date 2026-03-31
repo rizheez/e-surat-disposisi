@@ -5,21 +5,40 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class SuratMasuk extends Model
 {
+    use SoftDeletes, LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['nomor_surat', 'perihal', 'status', 'tanggal_surat'])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(fn(string $eventName) => "Surat masuk {$eventName}")
+            ->useLogName('surat-masuk');
+    }
+
     protected $fillable = [
         'nomor_agenda',
         'nomor_surat',
         'tanggal_surat',
         'tanggal_terima',
         'pengirim',
+        'alamat_pengirim',
         'perihal',
         'klasifikasi',
+        'sifat_surat',
+        'prioritas',
         'file_path',
+        'keterangan',
         'status',
+        'penerima',
         'created_by',
-        'unit_tujuan_id',
+        'archived_at',
     ];
 
     protected function casts(): array
@@ -27,6 +46,7 @@ class SuratMasuk extends Model
         return [
             'tanggal_surat' => 'date',
             'tanggal_terima' => 'date',
+            'archived_at' => 'datetime',
         ];
     }
 
@@ -35,9 +55,9 @@ class SuratMasuk extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function unitTujuan(): BelongsTo
+    public function penerimaUser(): BelongsTo
     {
-        return $this->belongsTo(UnitKerja::class, 'unit_tujuan_id');
+        return $this->belongsTo(User::class, 'penerima');
     }
 
     public function disposisis(): HasMany
@@ -60,7 +80,6 @@ class SuratMasuk extends Model
             ->first();
 
         if ($lastSurat) {
-            // Extract the number from format SM/001/II/2026
             preg_match('/SM\/(\d+)\//', $lastSurat->nomor_agenda, $matches);
             $nextNumber = isset($matches[1]) ? (int) $matches[1] + 1 : 1;
         } else {

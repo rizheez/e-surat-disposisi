@@ -58,6 +58,17 @@ class UserSeeder extends Seeder
         ]);
         $staf->assignRole('staf');
 
+        // Wakil Rektor
+        $wakilRektor = User::create([
+            'name' => 'Prof. Dr. H. Wakil Rektor',
+            'email' => 'wr@esurat.test',
+            'password' => bcrypt('password'),
+            'jabatan' => 'Wakil Rektor',
+            'unit_kerja_id' => $rektorat?->id,
+            'email_verified_at' => now(),
+        ]);
+        $wakilRektor->assignRole('pimpinan');
+
         // Additional pimpinan for FTI
         $dekanFti = User::create([
             'name' => 'Prof. Dewi Kumala',

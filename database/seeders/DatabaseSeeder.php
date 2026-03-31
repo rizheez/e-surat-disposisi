@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             UnitKerjaSeeder::class,
             UserSeeder::class,
+            KlasifikasiSeeder::class,
         ]);
     }
 }

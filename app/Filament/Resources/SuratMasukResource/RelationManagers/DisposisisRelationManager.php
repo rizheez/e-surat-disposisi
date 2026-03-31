@@ -32,6 +32,12 @@ class DisposisisRelationManager extends RelationManager
                     ->options(fn() => \App\Models\UnitKerja::pluck('nama', 'id'))
                     ->searchable()
                     ->preload(),
+                Forms\Components\Select::make('tembusan_user_ids')
+                    ->label('Tembusan (Opsional)')
+                    ->options(fn() => \App\Models\User::pluck('name', 'id'))
+                    ->multiple()
+                    ->searchable()
+                    ->preload(),
                 Forms\Components\Textarea::make('instruksi')
                     ->required()
                     ->label('Instruksi')
@@ -60,6 +66,12 @@ class DisposisisRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('instruksi')
                     ->label('Instruksi')
                     ->limit(50),
+                Tables\Columns\IconColumn::make('is_tembusan')
+                    ->label('Tembusan')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('batas_waktu')
                     ->label('Batas Waktu')
                     ->date('d M Y')
@@ -89,16 +101,77 @@ class DisposisisRelationManager extends RelationManager
             ])
             ->headerActions([
                 \Filament\Actions\CreateAction::make()
+                    ->visible(function (): bool {
+                        $user = \Illuminate\Support\Facades\Auth::user();
+                        if (!$user) {
+                            return false;
+                        }
+
+                        // Admin bebas membuat disposisi.
+                        if ($user->hasRole('admin')) {
+                            return true;
+                        }
+
+                        if (!$user->hasRole('pimpinan')) {
+                            return false;
+                        }
+
+                        $owner = $this->getOwnerRecord(); // SuratMasuk
+                        if (!$owner) {
+                            return false;
+                        }
+
+                        // Hanya eksekutor (tindak lanjut, bukan tembusan) yang boleh membuat disposisi lanjut.
+                        $unitId = $user->unit_kerja_id;
+
+                        return $owner->disposisis()
+                            ->where('is_tembusan', false)
+                            ->where('status', '!=', 'selesai')
+                            ->where(function ($q) use ($user, $unitId) {
+                                $q->where('ke_user_id', $user->id);
+                                if (!empty($unitId)) {
+                                    $q->orWhere('ke_unit_id', $unitId);
+                                }
+                            })
+                            ->exists();
+                    })
                     ->mutateFormDataUsing(function (array $data): array {
-                        $data['dari_user_id'] = auth()->id();
+                        $data['dari_user_id'] = \Illuminate\Support\Facades\Auth::id();
                         $data['status'] = 'belum_diproses';
                         return $data;
+                    })
+                    ->after(function (\App\Models\Disposisi $record, array $data) {
+                        if (!empty($data['tembusan_user_ids'])) {
+                            foreach ($data['tembusan_user_ids'] as $userId) {
+                                Disposisi::create([
+                                    'surat_masuk_id' => $record->surat_masuk_id,
+                                    'dari_user_id' => \Illuminate\Support\Facades\Auth::id(),
+                                    'ke_user_id' => $userId,
+                                    'ke_unit_id' => null,
+                                    'instruksi' => 'Mengetahui (Tembusan). Instruksi utama: ' . $data['instruksi'],
+                                    'status' => 'selesai',
+                                    'is_tembusan' => true,
+                                    'parent_id' => $record->id,
+                                ]);
+                                
+                                $tempUser = \App\Models\User::find($userId);
+                                if ($tempUser) {
+                                    Notification::make()
+                                        ->title('Tembusan Disposisi')
+                                        ->body("Anda mendapat tembusan disposisi untuk surat: {$record->suratMasuk->perihal}")
+                                        ->icon('heroicon-o-information-circle')
+                                        ->iconColor('info')
+                                        ->sendToDatabase($tempUser);
+                                }
+                            }
+                        }
                     }),
             ])
             ->actions([
                 \Filament\Actions\Action::make('updateStatus')
                     ->label('Update Status')
                     ->icon('heroicon-o-arrow-path')
+                    ->visible(fn(Disposisi $record): bool => ! $record->is_tembusan)
                     ->form([
                         Forms\Components\Select::make('status')
                             ->options([

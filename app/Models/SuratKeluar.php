@@ -4,43 +4,72 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class SuratKeluar extends Model
 {
+    use SoftDeletes, LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['nomor_surat', 'perihal', 'status', 'tanggal_surat', 'penandatangan_id'])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(fn(string $eventName) => "Surat keluar {$eventName}")
+            ->useLogName('surat-keluar');
+    }
+
     protected $fillable = [
         'nomor_surat',
-        'tanggal',
-        'perihal',
+        'nomor_agenda',
+        'tanggal_surat',
         'tujuan',
+        'alamat_tujuan',
+        'perihal',
+        'lampiran',
         'isi_surat',
-        'file_path',
-        'status',
-        'created_by',
-        'unit_kerja_id',
-        'approved_by',
         'template_surat_id',
+        'klasifikasi',
+        'sifat_surat',
+        'file_path',
+        'surat_masuk_id',
+        'status',
+        'pembuat_id',
+        'penandatangan_id',
+        'tanggal_kirim',
+        'keterangan',
+        'tembusan',
+        'qr_token',
+        'approved_at',
+        'archived_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'tanggal' => 'date',
+            'tanggal_surat' => 'date',
+            'tanggal_kirim' => 'date',
+            'approved_at' => 'datetime',
+            'archived_at' => 'datetime',
+            'tembusan' => 'array',
         ];
     }
 
-    public function createdBy(): BelongsTo
+    public function pembuat(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'pembuat_id');
     }
 
-    public function unitKerja(): BelongsTo
+    public function penandatangan(): BelongsTo
     {
-        return $this->belongsTo(UnitKerja::class);
+        return $this->belongsTo(User::class, 'penandatangan_id');
     }
 
-    public function approvedBy(): BelongsTo
+    public function suratMasuk(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'approved_by');
+        return $this->belongsTo(SuratMasuk::class);
     }
 
     public function templateSurat(): BelongsTo
@@ -50,33 +79,51 @@ class SuratKeluar extends Model
 
     /**
      * Generate nomor surat keluar otomatis.
-     * Format: SK/001/II/2026
+     * Format Umum: (Kode Jenis Surat)/(Nomor Urut)/UNU-KT/(bulan)/(tahun)
+     * Format Khusus: (Nomor)/(Kode Surat)/UNU-KT/(bulan)/(tahun)
      */
-    public static function generateNomorSurat(): string
+    public static function generateNomorSurat(?int $klasifikasiId = null): string
     {
         $tahun = date('Y');
         $bulan = SuratMasuk::getRomanMonth((int) date('m'));
 
+        // Get next sequence number
         $lastSurat = self::whereYear('created_at', $tahun)
             ->whereMonth('created_at', (int) date('m'))
             ->orderBy('id', 'desc')
             ->first();
 
-        if ($lastSurat) {
-            preg_match('/SK\/(\d+)\//', $lastSurat->nomor_surat, $matches);
+        $nextNumber = 1;
+        if ($lastSurat && $lastSurat->nomor_surat) {
+            // Extract number from any format: look for /001/ or similar
+            preg_match('/(\d{3})/', $lastSurat->nomor_surat, $matches);
             $nextNumber = isset($matches[1]) ? (int) $matches[1] + 1 : 1;
-        } else {
-            $nextNumber = 1;
         }
 
-        return sprintf('SK/%03d/%s/%s', $nextNumber, $bulan, $tahun);
+        $nomor = sprintf('%03d', $nextNumber);
+
+        // Look up klasifikasi
+        if ($klasifikasiId) {
+            $klasifikasi = Klasifikasi::find($klasifikasiId);
+            if ($klasifikasi) {
+                // Special type (ND, SPTDD, S.Kep, etc): (nomor)/(kode_surat)/UNU-KT/(bulan)/(tahun)
+                if ($klasifikasi->kode_surat) {
+                    return "{$nomor}/{$klasifikasi->kode_surat}/UNU-KT/{$bulan}/{$tahun}";
+                }
+                // Normal type: (kode)/(nomor)/UNU-KT/(bulan)/(tahun)
+                return "{$klasifikasi->kode}/{$nomor}/UNU-KT/{$bulan}/{$tahun}";
+            }
+        }
+
+        // Fallback: generic format
+        return "{$nomor}/UNU-KT/{$bulan}/{$tahun}";
     }
 
     protected static function booted(): void
     {
         static::creating(function (SuratKeluar $suratKeluar) {
             if (empty($suratKeluar->nomor_surat)) {
-                $suratKeluar->nomor_surat = self::generateNomorSurat();
+                $suratKeluar->nomor_surat = self::generateNomorSurat($suratKeluar->klasifikasi);
             }
         });
     }
