@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Policies;
 
 use App\Models\SuratKeluar;
@@ -8,35 +10,35 @@ use App\Models\User;
 class SuratKeluarPolicy
 {
     /**
-     * Admin, pimpinan, sekretaris bisa melihat daftar surat keluar.
+     * Semua user panel bisa melihat daftar surat keluar.
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'pimpinan', 'sekretaris']);
+        return $user->canCreateSuratKeluar();
     }
 
     /**
-     * Admin, pimpinan, sekretaris bisa melihat detail surat keluar.
+     * Semua user panel bisa melihat detail surat keluar.
      */
     public function view(User $user, SuratKeluar $suratKeluar): bool
     {
-        return $user->hasAnyRole(['admin', 'pimpinan', 'sekretaris']);
+        return $user->canCreateSuratKeluar();
     }
 
     /**
-     * Hanya admin dan sekretaris yang bisa membuat surat keluar.
+     * Semua user panel bisa membuat surat keluar.
      */
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'sekretaris']);
+        return $user->canCreateSuratKeluar();
     }
 
     /**
-     * Admin dan sekretaris bisa edit, tapi hanya jika surat masih draft.
+     * Semua user panel bisa edit, tapi hanya jika surat masih draft.
      */
     public function update(User $user, SuratKeluar $suratKeluar): bool
     {
-        if (!$user->hasAnyRole(['admin', 'sekretaris'])) {
+        if (! $user->canCreateSuratKeluar()) {
             return false;
         }
 
@@ -44,11 +46,11 @@ class SuratKeluarPolicy
     }
 
     /**
-     * Admin dan sekretaris bisa hapus, tapi hanya jika surat masih draft.
+     * Semua user panel bisa hapus, tapi hanya jika surat masih draft.
      */
     public function delete(User $user, SuratKeluar $suratKeluar): bool
     {
-        if (!$user->hasAnyRole(['admin', 'sekretaris'])) {
+        if (! $user->canCreateSuratKeluar()) {
             return false;
         }
 
@@ -60,7 +62,7 @@ class SuratKeluarPolicy
      */
     public function restore(User $user, SuratKeluar $suratKeluar): bool
     {
-        return $user->hasRole('admin');
+        return $user->isAdminRole();
     }
 
     /**
@@ -68,7 +70,7 @@ class SuratKeluarPolicy
      */
     public function forceDelete(User $user, SuratKeluar $suratKeluar): bool
     {
-        return $user->hasRole('admin');
+        return $user->isAdminRole();
     }
 
     /**

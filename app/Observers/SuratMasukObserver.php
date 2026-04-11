@@ -10,8 +10,10 @@ class SuratMasukObserver
 {
     public function created(SuratMasuk $suratMasuk): void
     {
-        // Notify pimpinan and sekretaris when new surat masuk arrives
-        $users = User::role(['pimpinan', 'sekretaris'])->get();
+        $users = User::role([
+            ...User::leadershipRoleNames(),
+            'staf_administrasi',
+        ])->get();
 
         foreach ($users as $user) {
             Notification::make()

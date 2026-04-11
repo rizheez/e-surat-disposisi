@@ -5,21 +5,20 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
 use Filament\Forms;
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Section;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Spatie\Permission\Models\Role;
 use UnitEnum;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-users';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Master Data';
+    protected static string|UnitEnum|null $navigationGroup = 'Master Data';
 
     protected static ?string $navigationLabel = 'Pengguna';
 
@@ -51,9 +50,9 @@ class UserResource extends Resource
                             ->unique(ignoreRecord: true),
                         Forms\Components\TextInput::make('password')
                             ->password()
-                            ->dehydrateStateUsing(fn($state) => filled($state) ? bcrypt($state) : null)
-                            ->dehydrated(fn($state) => filled($state))
-                            ->required(fn(string $operation): bool => $operation === 'create')
+                            ->dehydrateStateUsing(fn ($state) => filled($state) ? bcrypt($state) : null)
+                            ->dehydrated(fn ($state) => filled($state))
+                            ->required(fn (string $operation): bool => $operation === 'create')
                             ->label('Password')
                             ->helperText('Kosongkan jika tidak ingin mengubah password'),
                     ])->columns(2),
@@ -99,11 +98,13 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('roles.name')
                     ->label('Role')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'admin' => 'danger',
-                        'pimpinan' => 'warning',
-                        'sekretaris' => 'info',
+                        'rektor', 'wr', 'kabiro' => 'warning',
+                        'dekan', 'kaprodi' => 'info',
+                        'staf_administrasi' => 'success',
                         'staf' => 'success',
+                        'dosen' => 'gray',
                         default => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('created_at')

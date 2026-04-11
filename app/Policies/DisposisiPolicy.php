@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Policies;
 
 use App\Models\Disposisi;
@@ -12,7 +14,7 @@ class DisposisiPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'pimpinan', 'sekretaris', 'staf']);
+        return $user->canCreateSuratKeluar();
     }
 
     /**
@@ -20,23 +22,23 @@ class DisposisiPolicy
      */
     public function view(User $user, Disposisi $disposisi): bool
     {
-        return $user->hasAnyRole(['admin', 'pimpinan', 'sekretaris', 'staf']);
+        return $user->canCreateSuratKeluar();
     }
 
     /**
-     * Hanya admin dan pimpinan yang bisa membuat disposisi.
+     * Hanya admin dan pejabat struktural yang bisa membuat disposisi.
      */
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'pimpinan']);
+        return $user->canManageDisposisi();
     }
 
     /**
-     * Admin bisa edit semua, pimpinan hanya disposisi yang dia buat.
+     * Admin bisa edit semua, pejabat struktural hanya disposisi yang dia buat.
      */
     public function update(User $user, Disposisi $disposisi): bool
     {
-        if ($user->hasRole('admin')) {
+        if ($user->isAdminRole()) {
             return true;
         }
 
@@ -45,7 +47,7 @@ class DisposisiPolicy
             return false;
         }
 
-        return $user->hasRole('pimpinan') && $disposisi->dari_user_id === $user->id;
+        return $user->canManageDisposisi() && $disposisi->dari_user_id === $user->id;
     }
 
     /**
@@ -53,6 +55,6 @@ class DisposisiPolicy
      */
     public function delete(User $user, Disposisi $disposisi): bool
     {
-        return $user->hasRole('admin');
+        return $user->isAdminRole();
     }
 }

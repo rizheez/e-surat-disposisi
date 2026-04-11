@@ -54,16 +54,15 @@ class SuratKeluarObserver
                 }
             }
 
-            // Notify pimpinan when surat submitted for review
             if ($suratKeluar->status === 'review') {
-                $pimpinans = User::role('pimpinan')->get();
-                foreach ($pimpinans as $pimpinan) {
+                $pejabatStruktural = User::role(User::leadershipRoleNames())->get();
+                foreach ($pejabatStruktural as $pejabat) {
                     Notification::make()
                         ->title('Surat Keluar Menunggu Review')
                         ->body("{$suratKeluar->perihal}")
                         ->icon('heroicon-o-clipboard-document-check')
                         ->iconColor('warning')
-                        ->sendToDatabase($pimpinan);
+                        ->sendToDatabase($pejabat);
                 }
             }
         }

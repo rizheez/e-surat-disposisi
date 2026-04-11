@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources\SuratMasukResource\RelationManagers;
 
 use App\Models\Disposisi;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -24,17 +26,17 @@ class DisposisisRelationManager extends RelationManager
             ->schema([
                 Forms\Components\Select::make('ke_user_id')
                     ->label('Tujuan (User)')
-                    ->options(fn() => \App\Models\User::pluck('name', 'id'))
+                    ->options(fn () => \App\Models\User::pluck('name', 'id'))
                     ->searchable()
                     ->preload(),
                 Forms\Components\Select::make('ke_unit_id')
                     ->label('Tujuan (Unit Kerja)')
-                    ->options(fn() => \App\Models\UnitKerja::pluck('nama', 'id'))
+                    ->options(fn () => \App\Models\UnitKerja::pluck('nama', 'id'))
                     ->searchable()
                     ->preload(),
                 Forms\Components\Select::make('tembusan_user_ids')
                     ->label('Tembusan (Opsional)')
-                    ->options(fn() => \App\Models\User::pluck('name', 'id'))
+                    ->options(fn () => \App\Models\User::pluck('name', 'id'))
                     ->multiple()
                     ->searchable()
                     ->preload(),
@@ -79,13 +81,13 @@ class DisposisisRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'belum_diproses' => 'danger',
                         'sedang_diproses' => 'warning',
                         'selesai' => 'success',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
                         'belum_diproses' => 'Belum Diproses',
                         'sedang_diproses' => 'Sedang Diproses',
                         'selesai' => 'Selesai',
@@ -103,21 +105,21 @@ class DisposisisRelationManager extends RelationManager
                 \Filament\Actions\CreateAction::make()
                     ->visible(function (): bool {
                         $user = \Illuminate\Support\Facades\Auth::user();
-                        if (!$user) {
+                        if (! $user) {
                             return false;
                         }
 
                         // Admin bebas membuat disposisi.
-                        if ($user->hasRole('admin')) {
+                        if ($user->isAdminRole()) {
                             return true;
                         }
 
-                        if (!$user->hasRole('pimpinan')) {
+                        if (! $user->canManageDisposisi()) {
                             return false;
                         }
 
                         $owner = $this->getOwnerRecord(); // SuratMasuk
-                        if (!$owner) {
+                        if (! $owner) {
                             return false;
                         }
 
@@ -129,7 +131,7 @@ class DisposisisRelationManager extends RelationManager
                             ->where('status', '!=', 'selesai')
                             ->where(function ($q) use ($user, $unitId) {
                                 $q->where('ke_user_id', $user->id);
-                                if (!empty($unitId)) {
+                                if (! empty($unitId)) {
                                     $q->orWhere('ke_unit_id', $unitId);
                                 }
                             })
@@ -138,22 +140,23 @@ class DisposisisRelationManager extends RelationManager
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['dari_user_id'] = \Illuminate\Support\Facades\Auth::id();
                         $data['status'] = 'belum_diproses';
+
                         return $data;
                     })
                     ->after(function (\App\Models\Disposisi $record, array $data) {
-                        if (!empty($data['tembusan_user_ids'])) {
+                        if (! empty($data['tembusan_user_ids'])) {
                             foreach ($data['tembusan_user_ids'] as $userId) {
                                 Disposisi::create([
                                     'surat_masuk_id' => $record->surat_masuk_id,
                                     'dari_user_id' => \Illuminate\Support\Facades\Auth::id(),
                                     'ke_user_id' => $userId,
                                     'ke_unit_id' => null,
-                                    'instruksi' => 'Mengetahui (Tembusan). Instruksi utama: ' . $data['instruksi'],
+                                    'instruksi' => 'Mengetahui (Tembusan). Instruksi utama: '.$data['instruksi'],
                                     'status' => 'selesai',
                                     'is_tembusan' => true,
                                     'parent_id' => $record->id,
                                 ]);
-                                
+
                                 $tempUser = \App\Models\User::find($userId);
                                 if ($tempUser) {
                                     Notification::make()
@@ -171,7 +174,7 @@ class DisposisisRelationManager extends RelationManager
                 \Filament\Actions\Action::make('updateStatus')
                     ->label('Update Status')
                     ->icon('heroicon-o-arrow-path')
-                    ->visible(fn(Disposisi $record): bool => ! $record->is_tembusan)
+                    ->visible(fn (Disposisi $record): bool => ! $record->is_tembusan)
                     ->form([
                         Forms\Components\Select::make('status')
                             ->options([

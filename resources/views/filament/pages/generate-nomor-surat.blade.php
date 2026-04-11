@@ -11,10 +11,6 @@
                     </div>
 
                     <div class="flex flex-wrap gap-3">
-                        <x-filament::button tag="button" type="button" icon="heroicon-o-clipboard"
-                            x-on:click="navigator.clipboard.writeText(@js($generatedNomor))">
-                            Salin Nomor
-                        </x-filament::button>
 
                         <p class="self-center text-sm text-gray-500 dark:text-gray-400">
                             Nomor sudah dicadangkan dan belum masuk ke data Surat Keluar.

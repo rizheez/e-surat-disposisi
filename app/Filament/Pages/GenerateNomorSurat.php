@@ -7,13 +7,9 @@ namespace App\Filament\Pages;
 use App\Models\GeneratedNomorSurat;
 use App\Models\Klasifikasi;
 use App\Models\SuratKeluar;
-use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Actions;
-use Filament\Schemas\Components\EmbeddedSchema;
-use Filament\Schemas\Components\Form as SchemaForm;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
@@ -53,7 +49,7 @@ class GenerateNomorSurat extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'sekretaris']) ?? false;
+        return auth()->user()?->canCreateSuratKeluar() ?? false;
     }
 
     public function form(Schema $schema): Schema
@@ -66,12 +62,12 @@ class GenerateNomorSurat extends Page implements HasTable
                     ->schema([
                         Forms\Components\Select::make('klasifikasi')
                             ->label('Klasifikasi / Jenis Surat')
-                            ->options(fn(): array => Klasifikasi::query()
+                            ->options(fn (): array => Klasifikasi::query()
                                 ->select(['id', 'kode', 'nama'])
                                 ->where('is_active', true)
                                 ->orderBy('kode')
                                 ->get()
-                                ->mapWithKeys(fn(Klasifikasi $klasifikasi): array => [
+                                ->mapWithKeys(fn (Klasifikasi $klasifikasi): array => [
                                     $klasifikasi->id => "{$klasifikasi->kode} - {$klasifikasi->nama}",
                                 ])
                                 ->all())
@@ -111,8 +107,6 @@ class GenerateNomorSurat extends Page implements HasTable
             ]);
     }
 
-
-
     public function table(Table $table): Table
     {
         return $table
@@ -144,11 +138,11 @@ class GenerateNomorSurat extends Page implements HasTable
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'used' => 'success',
                         default => 'warning',
                     })
-                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
                         'used' => 'Terpakai',
                         default => 'Dicadangkan',
                     }),

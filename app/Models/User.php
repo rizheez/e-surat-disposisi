@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Filament\Models\Contracts\FilamentUser;
@@ -14,7 +16,29 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, HasRoles, Notifiable;
+
+    private const ADMIN_ROLE = 'admin';
+
+    private const LEADERSHIP_ROLES = [
+        'rektor',
+        'wr',
+        'kabiro',
+        'dekan',
+        'kaprodi',
+    ];
+
+    private const PANEL_ROLES = [
+        self::ADMIN_ROLE,
+        'rektor',
+        'wr',
+        'kabiro',
+        'dekan',
+        'kaprodi',
+        'staf_administrasi',
+        'staf',
+        'dosen',
+    ];
 
     protected $fillable = [
         'name',
@@ -40,7 +64,40 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->hasAnyRole(['admin', 'pimpinan', 'sekretaris', 'staf']);
+        return $this->hasAnyRole(self::PANEL_ROLES);
+    }
+
+    public function canManageSuratMasuk(): bool
+    {
+        return $this->hasAnyRole([self::ADMIN_ROLE, 'staf_administrasi']);
+    }
+
+    public function canCreateSuratKeluar(): bool
+    {
+        return $this->hasAnyRole(self::PANEL_ROLES);
+    }
+
+    public function canManageDisposisi(): bool
+    {
+        return $this->hasAnyRole([
+            self::ADMIN_ROLE,
+            ...self::LEADERSHIP_ROLES,
+        ]);
+    }
+
+    public function isAdminRole(): bool
+    {
+        return $this->hasRole(self::ADMIN_ROLE);
+    }
+
+    public static function leadershipRoleNames(): array
+    {
+        return self::LEADERSHIP_ROLES;
+    }
+
+    public static function panelRoleNames(): array
+    {
+        return self::PANEL_ROLES;
     }
 
     public function unitKerja(): BelongsTo

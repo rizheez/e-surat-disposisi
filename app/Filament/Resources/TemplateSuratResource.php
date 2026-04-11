@@ -5,9 +5,9 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\TemplateSuratResource\Pages;
 use App\Models\TemplateSurat;
 use Filament\Forms;
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Section;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use UnitEnum;
@@ -16,9 +16,9 @@ class TemplateSuratResource extends Resource
 {
     protected static ?string $model = TemplateSurat::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-document-duplicate';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-duplicate';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Master Data';
+    protected static string|UnitEnum|null $navigationGroup = 'Master Data';
 
     protected static ?string $navigationLabel = 'Template Surat';
 
@@ -30,7 +30,7 @@ class TemplateSuratResource extends Resource
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'sekretaris']);
+        return auth()->user()?->canManageSuratMasuk();
     }
 
     public static function form(Schema $form): Schema

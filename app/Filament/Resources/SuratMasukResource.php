@@ -6,17 +6,16 @@ use App\Filament\Resources\SuratMasukResource\Pages;
 use App\Filament\Resources\SuratMasukResource\RelationManagers;
 use App\Models\Disposisi;
 use App\Models\SuratMasuk;
+use BackedEnum;
 use Filament\Forms;
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Section;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-
-use BackedEnum;
 use UnitEnum;
 
 class SuratMasukResource extends Resource
@@ -35,7 +34,6 @@ class SuratMasukResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-
     public static function form(Schema $form): Schema
     {
         return $form
@@ -50,7 +48,7 @@ class SuratMasukResource extends Resource
                             ->maxLength(50)
                             ->label('Nomor Agenda')
                             ->helperText('Otomatis jika kosong')
-                            ->disabled(fn(string $operation): bool => $operation === 'edit'),
+                            ->disabled(fn (string $operation): bool => $operation === 'edit'),
                         Forms\Components\DatePicker::make('tanggal_surat')
                             ->required()
                             ->label('Tanggal Surat')
@@ -156,18 +154,18 @@ class SuratMasukResource extends Resource
                     ->label('Perihal')
                     ->searchable()
                     ->limit(40)
-                    ->tooltip(fn($record) => $record->perihal),
+                    ->tooltip(fn ($record) => $record->perihal),
                 Tables\Columns\TextColumn::make('sifat_surat')
                     ->label('Sifat')
                     ->badge()
-                    ->color(fn(?string $state): string => match ($state) {
+                    ->color(fn (?string $state): string => match ($state) {
                         'biasa' => 'gray',
                         'penting' => 'warning',
                         'rahasia' => 'danger',
                         'sangat_rahasia' => 'danger',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn(?string $state): string => match ($state) {
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
                         'biasa' => 'Biasa',
                         'penting' => 'Penting',
                         'rahasia' => 'Rahasia',
@@ -177,14 +175,14 @@ class SuratMasukResource extends Resource
                 Tables\Columns\TextColumn::make('prioritas')
                     ->label('Prioritas')
                     ->badge()
-                    ->color(fn(?string $state): string => match ($state) {
+                    ->color(fn (?string $state): string => match ($state) {
                         'rendah' => 'gray',
                         'sedang' => 'info',
                         'tinggi' => 'warning',
                         'segera' => 'danger',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn(?string $state): string => match ($state) {
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
                         'rendah' => 'Rendah',
                         'sedang' => 'Sedang',
                         'tinggi' => 'Tinggi',
@@ -199,14 +197,14 @@ class SuratMasukResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'diterima' => 'gray',
                         'dibaca' => 'info',
                         'didisposisi' => 'warning',
                         'selesai' => 'success',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
                         'diterima' => 'Diterima',
                         'dibaca' => 'Dibaca',
                         'didisposisi' => 'Didisposisi',
@@ -255,23 +253,23 @@ class SuratMasukResource extends Resource
                     ->icon('heroicon-o-paper-airplane')
                     ->color('warning')
                     ->modalHeading('Buat Disposisi')
-                    ->modalDescription(fn($record) => "Surat: {$record->nomor_surat} - {$record->perihal}")
+                    ->modalDescription(fn ($record) => "Surat: {$record->nomor_surat} - {$record->perihal}")
                     ->form([
                         Forms\Components\Select::make('ke_user_id')
                             ->label('Tujuan (User)')
-                            ->options(fn() => \App\Models\User::pluck('name', 'id'))
+                            ->options(fn () => \App\Models\User::pluck('name', 'id'))
                             ->searchable()
                             ->preload()
                             ->helperText('Pilih user tujuan disposisi'),
                         Forms\Components\Select::make('ke_unit_id')
                             ->label('Tujuan (Unit Kerja)')
-                            ->options(fn() => \App\Models\UnitKerja::pluck('nama', 'id'))
+                            ->options(fn () => \App\Models\UnitKerja::pluck('nama', 'id'))
                             ->searchable()
                             ->preload()
                             ->helperText('Atau pilih unit kerja tujuan'),
                         Forms\Components\Select::make('tembusan_user_ids')
                             ->label('Tembusan (Opsional)')
-                            ->options(fn() => \App\Models\User::pluck('name', 'id'))
+                            ->options(fn () => \App\Models\User::pluck('name', 'id'))
                             ->multiple()
                             ->searchable()
                             ->preload()
@@ -314,18 +312,18 @@ class SuratMasukResource extends Resource
                         }
 
                         // Logika Tembusan Pilihan
-                        if (!empty($data['tembusan_user_ids'])) {
+                        if (! empty($data['tembusan_user_ids'])) {
                             foreach ($data['tembusan_user_ids'] as $userId) {
                                 Disposisi::create([
                                     'surat_masuk_id' => $record->id,
                                     'dari_user_id' => Auth::id(),
                                     'ke_user_id' => $userId,
                                     'ke_unit_id' => null,
-                                    'instruksi' => 'Mengetahui (Tembusan). Instruksi utama: ' . $data['instruksi'],
+                                    'instruksi' => 'Mengetahui (Tembusan). Instruksi utama: '.$data['instruksi'],
                                     'status' => 'selesai',
                                     'is_tembusan' => true,
                                 ]);
-                                
+
                                 $tempUser = \App\Models\User::find($userId);
                                 if ($tempUser) {
                                     Notification::make()
@@ -345,7 +343,7 @@ class SuratMasukResource extends Resource
                     })
                     ->visible(function (SuratMasuk $record): bool {
                         $user = Auth::user();
-                        if (!$user) {
+                        if (! $user) {
                             return false;
                         }
 
@@ -358,7 +356,7 @@ class SuratMasukResource extends Resource
                             return true;
                         }
 
-                        if (!$user->hasRole('pimpinan')) {
+                        if (! $user->canManageDisposisi()) {
                             return false;
                         }
 
@@ -370,7 +368,7 @@ class SuratMasukResource extends Resource
                             ->where('status', '!=', 'selesai')
                             ->where(function (Builder $q) use ($user, $unitId) {
                                 $q->where('ke_user_id', $user->id);
-                                if (!empty($unitId)) {
+                                if (! empty($unitId)) {
                                     $q->orWhere('ke_unit_id', $unitId);
                                 }
                             })
@@ -396,7 +394,7 @@ class SuratMasukResource extends Resource
                     })
                     ->visible(function (SuratMasuk $record): bool {
                         $user = Auth::user();
-                        if (!$user) {
+                        if (! $user) {
                             return false;
                         }
 
@@ -409,7 +407,7 @@ class SuratMasukResource extends Resource
                             return true;
                         }
 
-                        if (!$user->hasRole('pimpinan')) {
+                        if (! $user->canManageDisposisi()) {
                             return false;
                         }
 
@@ -420,7 +418,7 @@ class SuratMasukResource extends Resource
                             ->where('status', '!=', 'selesai')
                             ->where(function (Builder $q) use ($user, $unitId) {
                                 $q->where('ke_user_id', $user->id);
-                                if (!empty($unitId)) {
+                                if (! empty($unitId)) {
                                     $q->orWhere('ke_unit_id', $unitId);
                                 }
                             })
@@ -439,7 +437,7 @@ class SuratMasukResource extends Resource
                     })
                     ->visible(function (SuratMasuk $record): bool {
                         $user = Auth::user();
-                        if (!$user) {
+                        if (! $user) {
                             return false;
                         }
 
@@ -451,7 +449,7 @@ class SuratMasukResource extends Resource
                             return true;
                         }
 
-                        if (!$user->hasRole('pimpinan')) {
+                        if (! $user->canManageDisposisi()) {
                             return false;
                         }
 
@@ -462,7 +460,7 @@ class SuratMasukResource extends Resource
                             ->where('is_tembusan', false)
                             ->where(function (Builder $q) use ($user, $unitId) {
                                 $q->where('ke_user_id', $user->id);
-                                if (!empty($unitId)) {
+                                if (! empty($unitId)) {
                                     $q->orWhere('ke_unit_id', $unitId);
                                 }
                             })
@@ -503,16 +501,16 @@ class SuratMasukResource extends Resource
         $query = parent::getEloquentQuery()->withTrashed();
 
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return $query->whereRaw('1 = 0');
         }
 
-        // Admin & sekretaris melihat semua surat masuk (historis/operasional).
-        if ($user->hasAnyRole(['admin', 'sekretaris'])) {
+        // Admin & staf administrasi melihat semua surat masuk (historis/operasional).
+        if ($user->canManageSuratMasuk()) {
             return $query;
         }
 
-        // Untuk pimpinan: hanya surat yang relevan (jadi penerima disposisi atau tembusan).
+        // Untuk pejabat struktural: hanya surat yang relevan (jadi penerima disposisi atau tembusan).
         $unitId = $user->unit_kerja_id;
 
         return $query->where(function (Builder $q) use ($user, $unitId) {
@@ -520,7 +518,7 @@ class SuratMasukResource extends Resource
                 ->orWhereHas('disposisis', function (Builder $d) use ($user) {
                     $d->where('ke_user_id', $user->id);
                 })
-                ->when(!empty($unitId), function (Builder $d) use ($unitId) {
+                ->when(! empty($unitId), function (Builder $d) use ($unitId) {
                     $d->orWhereHas('disposisis', function (Builder $dx) use ($unitId) {
                         $dx->where('ke_unit_id', $unitId);
                     });
