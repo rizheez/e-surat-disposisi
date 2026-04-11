@@ -1,13 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RoleSeeder extends Seeder
 {
+    private const GUARD_NAME = 'web';
+
     public function run(): void
     {
         // Reset cached roles and permissions
@@ -47,6 +51,20 @@ class RoleSeeder extends Seeder
             'edit_user',
             'delete_user',
 
+            // Shield Role Management
+            'ViewAny:Role',
+            'View:Role',
+            'Create:Role',
+            'Update:Role',
+            'Delete:Role',
+            'DeleteAny:Role',
+            'Restore:Role',
+            'ForceDelete:Role',
+            'ForceDeleteAny:Role',
+            'RestoreAny:Role',
+            'Replicate:Role',
+            'Reorder:Role',
+
             // Template
             'view_template_surat',
             'create_template_surat',
@@ -55,14 +73,14 @@ class RoleSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+            Permission::findOrCreate($permission, self::GUARD_NAME);
         }
 
         // Create roles and assign permissions
-        $admin = Role::create(['name' => 'admin']);
+        $admin = Role::findOrCreate('admin', self::GUARD_NAME);
         $admin->givePermissionTo(Permission::all());
 
-        $pimpinan = Role::create(['name' => 'pimpinan']);
+        $pimpinan = Role::findOrCreate('pimpinan', self::GUARD_NAME);
         $pimpinan->givePermissionTo([
             'view_surat_masuk',
             'view_surat_keluar',
@@ -75,7 +93,7 @@ class RoleSeeder extends Seeder
             'view_template_surat',
         ]);
 
-        $sekretaris = Role::create(['name' => 'sekretaris']);
+        $sekretaris = Role::findOrCreate('sekretaris', self::GUARD_NAME);
         $sekretaris->givePermissionTo([
             'view_surat_masuk',
             'create_surat_masuk',
@@ -91,7 +109,7 @@ class RoleSeeder extends Seeder
             'edit_template_surat',
         ]);
 
-        $staf = Role::create(['name' => 'staf']);
+        $staf = Role::findOrCreate('staf', self::GUARD_NAME);
         $staf->givePermissionTo([
             'view_surat_masuk',
             'view_surat_keluar',
