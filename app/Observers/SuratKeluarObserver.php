@@ -1,14 +1,35 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Observers;
 
+use App\Models\GeneratedNomorSurat;
 use App\Models\SuratKeluar;
 use App\Models\User;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class SuratKeluarObserver
 {
+    public function created(SuratKeluar $suratKeluar): void
+    {
+        if (! Schema::hasTable('generated_nomor_surats')) {
+            return;
+        }
+
+        GeneratedNomorSurat::query()
+            ->where('nomor_surat', $suratKeluar->nomor_surat)
+            ->where('status', 'reserved')
+            ->update([
+                'status' => 'used',
+                'used_at' => now(),
+                'used_by_id' => $suratKeluar->pembuat_id,
+                'surat_keluar_id' => $suratKeluar->getKey(),
+            ]);
+    }
+
     public function updated(SuratKeluar $suratKeluar): void
     {
         if ($suratKeluar->isDirty('status')) {

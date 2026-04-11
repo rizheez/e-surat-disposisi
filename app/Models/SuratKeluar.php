@@ -1,23 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 class SuratKeluar extends Model
 {
-    use SoftDeletes, LogsActivity;
+    use LogsActivity, SoftDeletes;
+
+    private const NOMOR_SEQUENCE_DIGITS = 3;
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
             ->logOnly(['nomor_surat', 'perihal', 'status', 'tanggal_surat', 'penandatangan_id'])
             ->logOnlyDirty()
-            ->setDescriptionForEvent(fn(string $eventName) => "Surat keluar {$eventName}")
+            ->setDescriptionForEvent(fn (string $eventName) => "Surat keluar {$eventName}")
             ->useLogName('surat-keluar');
     }
 
@@ -82,23 +88,30 @@ class SuratKeluar extends Model
      * Format Umum: (Kode Jenis Surat)/(Nomor Urut)/UNU-KT/(bulan)/(tahun)
      * Format Khusus: (Nomor)/(Kode Surat)/UNU-KT/(bulan)/(tahun)
      */
-    public static function generateNomorSurat(?int $klasifikasiId = null): string
+    public static function generateNomorSurat(?int $klasifikasiId = null, mixed $tanggalSurat = null): string
     {
-        $tahun = date('Y');
-        $bulan = SuratMasuk::getRomanMonth((int) date('m'));
+        $tanggal = $tanggalSurat ? Carbon::parse($tanggalSurat) : now();
+        $tahun = $tanggal->format('Y');
+        $bulanAngka = $tanggal->month;
+        $bulan = SuratMasuk::getRomanMonth($bulanAngka);
 
-        // Get next sequence number
-        $lastSurat = self::whereYear('created_at', $tahun)
-            ->whereMonth('created_at', (int) date('m'))
-            ->orderBy('id', 'desc')
-            ->first();
+        $nomorSuratKeluar = self::whereNotNull('nomor_surat')
+            ->whereYear('tanggal_surat', $tahun)
+            ->whereMonth('tanggal_surat', $bulanAngka)
+            ->pluck('nomor_surat');
 
-        $nextNumber = 1;
-        if ($lastSurat && $lastSurat->nomor_surat) {
-            // Extract number from any format: look for /001/ or similar
-            preg_match('/(\d{3})/', $lastSurat->nomor_surat, $matches);
-            $nextNumber = isset($matches[1]) ? (int) $matches[1] + 1 : 1;
+        if (Schema::hasTable('generated_nomor_surats')) {
+            $nomorGenerated = GeneratedNomorSurat::query()
+                ->whereYear('tanggal_surat', $tahun)
+                ->whereMonth('tanggal_surat', $bulanAngka)
+                ->pluck('nomor_surat');
+
+            $nomorSuratKeluar = $nomorSuratKeluar->merge($nomorGenerated);
         }
+
+        $nextNumber = $nomorSuratKeluar
+            ->map(fn (string $nomorSurat): int => self::extractNomorUrut($nomorSurat))
+            ->max() + 1;
 
         $nomor = sprintf('%03d', $nextNumber);
 
@@ -110,6 +123,7 @@ class SuratKeluar extends Model
                 if ($klasifikasi->kode_surat) {
                     return "{$nomor}/{$klasifikasi->kode_surat}/UNU-KT/{$bulan}/{$tahun}";
                 }
+
                 // Normal type: (kode)/(nomor)/UNU-KT/(bulan)/(tahun)
                 return "{$klasifikasi->kode}/{$nomor}/UNU-KT/{$bulan}/{$tahun}";
             }
@@ -123,8 +137,15 @@ class SuratKeluar extends Model
     {
         static::creating(function (SuratKeluar $suratKeluar) {
             if (empty($suratKeluar->nomor_surat)) {
-                $suratKeluar->nomor_surat = self::generateNomorSurat($suratKeluar->klasifikasi);
+                $suratKeluar->nomor_surat = self::generateNomorSurat($suratKeluar->klasifikasi, $suratKeluar->tanggal_surat);
             }
         });
+    }
+
+    private static function extractNomorUrut(string $nomorSurat): int
+    {
+        preg_match('/(\d{'.self::NOMOR_SEQUENCE_DIGITS.'})/', $nomorSurat, $matches);
+
+        return isset($matches[1]) ? (int) $matches[1] : 0;
     }
 }
