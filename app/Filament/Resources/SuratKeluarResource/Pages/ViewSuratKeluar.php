@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources\SuratKeluarResource\Pages;
 
 use App\Filament\Resources\SuratKeluarResource;
@@ -24,7 +26,7 @@ class ViewSuratKeluar extends ViewRecord
                 ->label('Download File')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('primary')
-                ->url(fn () => asset('storage/' . $this->record->file_path))
+                ->url(fn () => route('surat-keluar.file.download', $this->record))
                 ->openUrlInNewTab()
                 ->visible(fn () => filled($this->record->file_path)),
             Actions\EditAction::make(),

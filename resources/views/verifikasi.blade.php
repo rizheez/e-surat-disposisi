@@ -69,7 +69,10 @@
                 </div>
 
                 <div class="bg-gray-50 px-6 py-4 text-center border-t">
-                    <p class="text-xs text-gray-500">Diverifikasi oleh <strong>{{ config('app.name') }}</strong></p>
+                    <p class="text-xs text-gray-500">Diverifikasi oleh <strong>
+                            {{-- {{ config('app.name') }} --}}
+                            UNUKALTIM
+                        </strong></p>
                 </div>
             </div>
         @else
@@ -92,7 +95,10 @@
                 </div>
 
                 <div class="bg-gray-50 px-6 py-4 text-center border-t">
-                    <p class="text-xs text-gray-500">{{ config('app.name') }}</p>
+                    <p class="text-xs text-gray-500"><strong>
+                            {{-- {{ config('app.name') }} --}}
+                            UNUKALTIM
+                        </strong></p>
                 </div>
             </div>
         @endif

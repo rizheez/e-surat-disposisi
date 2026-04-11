@@ -11,14 +11,12 @@ use App\Models\SuratKeluar;
 use App\Services\QrSignatureService;
 use BackedEnum;
 use Filament\Forms;
-use Filament\Forms\Components\RichEditor\RichEditorTool;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -54,7 +52,10 @@ class SuratKeluarResource extends Resource
                                 'web' => 'Buat di Web - nomor surat otomatis',
                                 'upload' => 'Upload File (.docx/.pdf) - pilih nomor dari Generate Nomor',
                             ])
-                            ->default(fn (?SuratKeluar $record): string => filled($record?->file_path) ? 'upload' : 'web')
+                            ->default(fn (?SuratKeluar $record): string => self::getMetodeValue($record))
+                            ->afterStateHydrated(function (Set $set, ?SuratKeluar $record): void {
+                                $set('metode', self::getMetodeValue($record));
+                            })
                             ->live()
                             ->dehydrated(false)
                             ->inline()
@@ -170,25 +171,7 @@ class SuratKeluarResource extends Resource
                     ->description('Tulis isi surat mulai dari "Kepada Yth." atau salam pembuka hingga salam penutup.')
                     ->schema([
                         Forms\Components\RichEditor::make('isi_surat')
-                            ->label('Isi Surat')
-                            ->tools([
-                                RichEditorTool::make('outdentList')
-                                    ->label('Kurangi Indent')
-                                    ->jsHandler('$getEditor()?.chain().focus().liftListItem(\'listItem\').run()')
-                                    ->activeStyling(false)
-                                    ->icon(Heroicon::ArrowLeft),
-                                RichEditorTool::make('indentList')
-                                    ->label('Tambah Indent')
-                                    ->jsHandler('$getEditor()?.chain().focus().sinkListItem(\'listItem\').run()')
-                                    ->activeStyling(false)
-                                    ->icon(Heroicon::ArrowRight),
-                            ])
-                            ->toolbarButtons([
-                                ['bold', 'italic', 'underline', 'strike', 'link'],
-                                ['alignStart', 'alignCenter', 'alignEnd', 'alignJustify'],
-                                ['bulletList', 'orderedList', 'outdentList', 'indentList'],
-                                ['undo', 'redo', 'clearFormatting'],
-                            ]),
+                            ->label('Isi Surat'),
                     ])
                     ->columns(1)
                     ->columnSpanFull()
@@ -430,6 +413,11 @@ class SuratKeluarResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->withTrashed();
+    }
+
+    private static function getMetodeValue(?SuratKeluar $record = null): string
+    {
+        return filled($record?->file_path) ? 'upload' : 'web';
     }
 
     private static function getGeneratedNomorOptions(?SuratKeluar $record = null): array

@@ -64,29 +64,41 @@
             padding: 10px 60px 80px 70px;
         }
 
-        /* ── Tanggal ── */
-        .tanggal {
-            text-align: right;
-            margin-bottom: 10px;
-        }
-
         /* ── Info table (Nomor, Lampiran, Perihal) ── */
-        .info-table {
+        .letter-meta-row {
             width: 100%;
             margin-bottom: 15px;
+            border-collapse: collapse;
         }
 
-        .info-table td {
+        .letter-meta-left {
+            width: 65%;
+            vertical-align: top;
+        }
+
+        .letter-meta-right {
+            width: 35%;
+            text-align: right;
+            vertical-align: top;
+            white-space: nowrap;
+        }
+
+        .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .meta-table td {
             vertical-align: top;
             padding: 1px 0;
         }
 
-        .info-table .label {
+        .meta-table .meta-label {
             width: 85px;
             font-weight: normal;
         }
 
-        .info-table .separator {
+        .meta-table .colon {
             width: 15px;
             text-align: center;
         }
@@ -193,27 +205,32 @@
         </div>
 
         <div class="content-area">
-            {{-- ═══ Tanggal ═══ --}}
-            <div class="tanggal">
-                {{ $suratKeluar->tanggal_surat?->translatedFormat('d F Y') ?? now()->translatedFormat('d F Y') }}
-            </div>
-
             {{-- ═══ Info Surat (Fixed) ═══ --}}
-            <table class="info-table">
+            <table class="letter-meta-row">
                 <tr>
-                    <td class="label">Nomor</td>
-                    <td class="separator">:</td>
-                    <td>{{ $suratKeluar->nomor_surat }}</td>
-                </tr>
-                <tr>
-                    <td class="label">Lampiran</td>
-                    <td class="separator">:</td>
-                    <td>{{ $suratKeluar->lampiran ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td class="label">Perihal</td>
-                    <td class="separator">:</td>
-                    <td>{{ $suratKeluar->perihal }}</td>
+                    <td class="letter-meta-left">
+                        <table class="meta-table">
+                            <tr>
+                                <td class="meta-label">Nomor</td>
+                                <td class="colon">:</td>
+                                <td>{{ $suratKeluar->nomor_surat }}</td>
+                            </tr>
+                            <tr>
+                                <td class="meta-label">Lampiran</td>
+                                <td class="colon">:</td>
+                                <td>{{ $suratKeluar->lampiran ?? '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="meta-label">Perihal</td>
+                                <td class="colon">:</td>
+                                <td>{{ $suratKeluar->perihal }}</td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td class="letter-meta-right">
+                        Samarinda,
+                        {{ $suratKeluar->tanggal_surat?->locale('id')->translatedFormat('d F Y') ?? now()->locale('id')->translatedFormat('d F Y') }}
+                    </td>
                 </tr>
             </table>
 
