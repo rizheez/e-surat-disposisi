@@ -1,21 +1,28 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\SuratKeluarResource\Pages;
+use App\Models\GeneratedNomorSurat;
+use App\Models\Klasifikasi;
 use App\Models\SuratKeluar;
 use App\Services\QrSignatureService;
+use BackedEnum;
 use Filament\Forms;
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\RichEditor\RichEditorTool;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-
-use BackedEnum;
 use UnitEnum;
 
 class SuratKeluarResource extends Resource
@@ -34,7 +41,6 @@ class SuratKeluarResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
-
     public static function form(Schema $form): Schema
     {
         return $form
@@ -45,38 +51,47 @@ class SuratKeluarResource extends Resource
                         Forms\Components\Radio::make('metode')
                             ->label('Metode Pembuatan')
                             ->options([
-                                'web' => '📝 Buat di Web — nomor surat otomatis',
-                                'upload' => '📎 Upload File (.docx/.pdf) — nomor surat manual',
+                                'web' => 'Buat di Web - nomor surat otomatis',
+                                'upload' => 'Upload File (.docx/.pdf) - pilih nomor dari Generate Nomor',
                             ])
-                            ->default('web')
+                            ->default(fn (?SuratKeluar $record): string => filled($record?->file_path) ? 'upload' : 'web')
                             ->live()
                             ->dehydrated(false)
                             ->inline()
                             ->columnSpanFull(),
 
                         // ── Info Surat ──
-                        Forms\Components\TextInput::make('nomor_surat')
+                        Forms\Components\Placeholder::make('nomor_surat_otomatis')
                             ->label('Nomor Surat')
-                            ->maxLength(100)
-                            ->helperText(
-                                fn(\Filament\Schemas\Components\Utilities\Get $get): string =>
-                                $get('metode') === 'upload'
-                                    ? 'Wajib diisi untuk surat yang diupload'
-                                    : 'Otomatis di-generate saat disimpan'
-                            )
-                            ->disabled(fn(\Filament\Schemas\Components\Utilities\Get $get): bool => $get('metode') === 'web')
-                            ->dehydrated()
-                            ->required(fn(\Filament\Schemas\Components\Utilities\Get $get): bool => $get('metode') === 'upload'),
+                            ->content('Otomatis di-generate saat disimpan')
+                            ->visible(fn (Get $get): bool => $get('metode') === 'web'),
+                        Forms\Components\Select::make('nomor_surat')
+                            ->label('Nomor Surat')
+                            ->options(fn (?SuratKeluar $record): array => self::getGeneratedNomorOptions($record))
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(function (?string $state, Set $set): void {
+                                self::fillGeneratedNomorFields($state, $set);
+                            })
+                            ->helperText('Pilih nomor yang sudah dibuat di menu Generate Nomor.')
+                            ->visible(fn (Get $get): bool => $get('metode') === 'upload')
+                            ->dehydrated(fn (Get $get): bool => $get('metode') === 'upload')
+                            ->required(fn (Get $get): bool => $get('metode') === 'upload'),
                         // Forms\Components\TextInput::make('nomor_agenda')
                         //     ->label('Nomor Agenda')
                         //     ->maxLength(50),
                         Forms\Components\Select::make('klasifikasi')
                             ->label('Klasifikasi / Jenis Surat')
                             ->options(
-                                fn() => \App\Models\Klasifikasi::where('is_active', true)
+                                fn () => Klasifikasi::query()
+                                    ->where('is_active', true)
                                     ->orderBy('kode')
                                     ->get()
-                                    ->mapWithKeys(fn($k) => [$k->id => "{$k->kode} - {$k->nama}"])
+                                    ->mapWithKeys(fn (Klasifikasi $klasifikasi): array => [
+                                        $klasifikasi->id => "{$klasifikasi->kode} - {$klasifikasi->nama}",
+                                    ])
+                                    ->all()
                             )
                             ->searchable()
                             ->preload()
@@ -86,12 +101,12 @@ class SuratKeluarResource extends Resource
                             ->required()
                             ->label('Tanggal Surat')
                             ->default(now()),
-                        Forms\Components\Select::make('surat_masuk_id')
-                            ->label('Balasan Surat Masuk')
-                            ->relationship('suratMasuk', 'nomor_surat')
-                            ->searchable()
-                            ->preload()
-                            ->placeholder('Pilih jika ini balasan'),
+                        // Forms\Components\Select::make('surat_masuk_id')
+                        //     ->label('Balasan Surat Masuk')
+                        //     ->relationship('suratMasuk', 'nomor_surat')
+                        //     ->searchable()
+                        //     ->preload()
+                        //     ->placeholder('Pilih jika ini balasan'),
 
                         // ── Tujuan ──
                         Forms\Components\TextInput::make('tujuan')
@@ -155,11 +170,29 @@ class SuratKeluarResource extends Resource
                     ->description('Tulis isi surat mulai dari "Kepada Yth." atau salam pembuka hingga salam penutup.')
                     ->schema([
                         Forms\Components\RichEditor::make('isi_surat')
-                            ->label('Isi Surat'),
+                            ->label('Isi Surat')
+                            ->tools([
+                                RichEditorTool::make('outdentList')
+                                    ->label('Kurangi Indent')
+                                    ->jsHandler('$getEditor()?.chain().focus().liftListItem(\'listItem\').run()')
+                                    ->activeStyling(false)
+                                    ->icon(Heroicon::ArrowLeft),
+                                RichEditorTool::make('indentList')
+                                    ->label('Tambah Indent')
+                                    ->jsHandler('$getEditor()?.chain().focus().sinkListItem(\'listItem\').run()')
+                                    ->activeStyling(false)
+                                    ->icon(Heroicon::ArrowRight),
+                            ])
+                            ->toolbarButtons([
+                                ['bold', 'italic', 'underline', 'strike', 'link'],
+                                ['alignStart', 'alignCenter', 'alignEnd', 'alignJustify'],
+                                ['bulletList', 'orderedList', 'outdentList', 'indentList'],
+                                ['undo', 'redo', 'clearFormatting'],
+                            ]),
                     ])
                     ->columns(1)
                     ->columnSpanFull()
-                    ->visible(fn(\Filament\Schemas\Components\Utilities\Get $get): bool => $get('metode') === 'web'),
+                    ->visible(fn (Get $get): bool => $get('metode') === 'web'),
 
                 // ── Upload File ──
                 Section::make('Upload Dokumen')
@@ -173,11 +206,11 @@ class SuratKeluarResource extends Resource
                                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                             ])
                             ->maxSize(10240)
-                            ->required(fn(\Filament\Schemas\Components\Utilities\Get $get): bool => $get('metode') === 'upload')
+                            ->required(fn (Get $get): bool => $get('metode') === 'upload')
                             ->helperText('Maks. 10MB'),
                     ])
                     ->columnSpanFull()
-                    ->visible(fn(\Filament\Schemas\Components\Utilities\Get $get): bool => $get('metode') === 'upload'),
+                    ->visible(fn (Get $get): bool => $get('metode') === 'upload'),
 
                 Forms\Components\Hidden::make('pembuat_id')
                     ->default(Auth::id()),
@@ -201,7 +234,7 @@ class SuratKeluarResource extends Resource
                     ->label('Perihal')
                     ->searchable()
                     ->limit(40)
-                    ->tooltip(fn($record) => $record->perihal),
+                    ->tooltip(fn ($record) => $record->perihal),
                 Tables\Columns\TextColumn::make('tujuan')
                     ->label('Tujuan')
                     ->searchable()
@@ -216,13 +249,13 @@ class SuratKeluarResource extends Resource
                 Tables\Columns\TextColumn::make('sifat_surat')
                     ->label('Sifat')
                     ->badge()
-                    ->color(fn(?string $state): string => match ($state) {
+                    ->color(fn (?string $state): string => match ($state) {
                         'biasa' => 'gray',
                         'penting' => 'warning',
                         'rahasia', 'sangat_rahasia' => 'danger',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn(?string $state): string => match ($state) {
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
                         'biasa' => 'Biasa',
                         'penting' => 'Penting',
                         'rahasia' => 'Rahasia',
@@ -233,14 +266,14 @@ class SuratKeluarResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'draft' => 'gray',
                         'review' => 'warning',
                         'approved' => 'success',
                         'sent' => 'info',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
                         'draft' => 'Draft',
                         'review' => 'Review',
                         'approved' => 'Disetujui',
@@ -290,8 +323,9 @@ class SuratKeluarResource extends Resource
                         $record->update(['status' => 'review']);
                         Notification::make()->title('Surat disubmit untuk review')->success()->send();
                     })
-                    ->visible(fn($record) => $record->status === 'draft'
-                        && (Auth::id() === $record->pembuat_id || Auth::user()?->hasRole('admin'))
+                    ->visible(
+                        fn ($record) => $record->status === 'draft'
+                            && (Auth::id() === $record->pembuat_id || Auth::user()?->hasRole('admin'))
                     ),
                 \Filament\Actions\Action::make('approve')
                     ->label('Setujui')
@@ -301,8 +335,8 @@ class SuratKeluarResource extends Resource
                     ->modalDescription('Setujui surat ini? QR code tanda tangan digital akan otomatis dibuat.')
                     ->action(function (SuratKeluar $record) {
                         // Generate QR token if not yet
-                        if (!$record->qr_token) {
-                            $service = new QrSignatureService();
+                        if (! $record->qr_token) {
+                            $service = new QrSignatureService;
                             $record->qr_token = $service->generateToken();
                         }
                         $record->status = 'approved';
@@ -310,8 +344,9 @@ class SuratKeluarResource extends Resource
                         $record->save();
                         Notification::make()->title('Surat disetujui & QR dibuat')->success()->send();
                     })
-                    ->visible(fn($record) => $record->status === 'review'
-                        && Auth::id() === $record->penandatangan_id
+                    ->visible(
+                        fn ($record) => $record->status === 'review'
+                            && Auth::id() === $record->penandatangan_id
                     ),
                 \Filament\Actions\Action::make('kirim')
                     ->label('Kirim')
@@ -322,7 +357,7 @@ class SuratKeluarResource extends Resource
                         $record->update(['status' => 'sent', 'tanggal_kirim' => now()]);
                         Notification::make()->title('Surat telah dikirim')->success()->send();
                     })
-                    ->visible(fn($record) => $record->status === 'approved'),
+                    ->visible(fn ($record) => $record->status === 'approved'),
                 \Filament\Actions\Action::make('tolak')
                     ->label('Tolak')
                     ->icon('heroicon-o-x-mark')
@@ -333,23 +368,24 @@ class SuratKeluarResource extends Resource
                         $record->update(['status' => 'draft', 'penandatangan_id' => null]);
                         Notification::make()->title('Surat ditolak, dikembalikan ke draft')->warning()->send();
                     })
-                    ->visible(fn($record) => $record->status === 'review'
-                        && Auth::id() === $record->penandatangan_id
+                    ->visible(
+                        fn ($record) => $record->status === 'review'
+                            && Auth::id() === $record->penandatangan_id
                     ),
                 \Filament\Actions\Action::make('downloadPdf')
                     ->label('PDF')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('primary')
-                    ->url(fn(SuratKeluar $record): string => route('pdf.surat-keluar', $record))
+                    ->url(fn (SuratKeluar $record): string => route('pdf.surat-keluar', $record))
                     ->openUrlInNewTab()
-                    ->visible(fn($record) => in_array($record->status, ['approved', 'sent']) && $record->isi_surat),
+                    ->visible(fn ($record) => in_array($record->status, ['approved', 'sent']) && $record->isi_surat),
                 \Filament\Actions\Action::make('downloadFile')
                     ->label('File')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('primary')
-                    ->url(fn(SuratKeluar $record): string => asset('storage/' . $record->file_path))
+                    ->url(fn (SuratKeluar $record): string => route('surat-keluar.file.download', $record))
                     ->openUrlInNewTab()
-                    ->visible(fn($record) => filled($record->file_path)),
+                    ->visible(fn ($record) => filled($record->file_path)),
                 \Filament\Actions\Action::make('arsipkan')
                     ->label('Arsipkan')
                     ->icon('heroicon-o-archive-box-arrow-down')
@@ -360,12 +396,12 @@ class SuratKeluarResource extends Resource
                         $record->update(['archived_at' => now()]);
                         Notification::make()->title('Surat diarsipkan')->success()->send();
                     })
-                    ->visible(fn($record) => $record->status === 'sent' && !$record->archived_at),
+                    ->visible(fn ($record) => $record->status === 'sent' && ! $record->archived_at),
                 \Filament\Actions\ViewAction::make(),
                 \Filament\Actions\EditAction::make()
-                    ->visible(fn($record) => $record->status === 'draft'),
+                    ->visible(fn ($record) => $record->status === 'draft'),
                 \Filament\Actions\DeleteAction::make()
-                    ->visible(fn($record) => $record->status === 'draft'),
+                    ->visible(fn ($record) => $record->status === 'draft'),
                 \Filament\Actions\RestoreAction::make(),
             ])
             ->bulkActions([
@@ -394,5 +430,45 @@ class SuratKeluarResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->withTrashed();
+    }
+
+    private static function getGeneratedNomorOptions(?SuratKeluar $record = null): array
+    {
+        return GeneratedNomorSurat::query()
+            ->where(function (Builder $query) use ($record): void {
+                $query->where('status', 'reserved');
+
+                if (filled($record?->nomor_surat)) {
+                    $query->orWhere('nomor_surat', $record->nomor_surat);
+                }
+            })
+            ->latest()
+            ->get()
+            ->mapWithKeys(fn (GeneratedNomorSurat $nomor): array => [
+                $nomor->nomor_surat => "{$nomor->nomor_surat} - {$nomor->perihal} - {$nomor->tujuan}",
+            ])
+            ->all();
+    }
+
+    private static function fillGeneratedNomorFields(?string $nomorSurat, Set $set): void
+    {
+        if (blank($nomorSurat)) {
+            return;
+        }
+
+        $generatedNomor = GeneratedNomorSurat::query()
+            ->where('nomor_surat', $nomorSurat)
+            ->first();
+
+        if (! $generatedNomor) {
+            return;
+        }
+
+        $set('tanggal_surat', $generatedNomor->tanggal_surat?->format('Y-m-d'));
+        $set('klasifikasi', $generatedNomor->klasifikasi);
+        $set('tujuan', $generatedNomor->tujuan);
+        $set('perihal', $generatedNomor->perihal);
+        $set('sifat_surat', $generatedNomor->sifat_surat);
+        // $set('keterangan', $generatedNomor->keterangan);
     }
 }

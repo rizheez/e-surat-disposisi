@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\PdfController;
+use App\Http\Controllers\SuratKeluarFileController;
 use App\Http\Controllers\VerifikasiController;
 use Illuminate\Support\Facades\Route;
 
@@ -18,4 +19,6 @@ Route::middleware('auth')->group(function () {
         ->name('pdf.surat-keluar');
     Route::get('/pdf/surat-keluar/{suratKeluar}/preview', [PdfController::class, 'suratKeluarPreview'])
         ->name('pdf.surat-keluar.preview');
+    Route::get('/surat-keluar/{suratKeluar}/file', SuratKeluarFileController::class)
+        ->name('surat-keluar.file.download');
 });

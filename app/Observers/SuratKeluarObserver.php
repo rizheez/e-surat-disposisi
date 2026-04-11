@@ -15,24 +15,17 @@ class SuratKeluarObserver
 {
     public function created(SuratKeluar $suratKeluar): void
     {
-        if (! Schema::hasTable('generated_nomor_surats')) {
-            return;
-        }
-
-        GeneratedNomorSurat::query()
-            ->where('nomor_surat', $suratKeluar->nomor_surat)
-            ->where('status', 'reserved')
-            ->update([
-                'status' => 'used',
-                'used_at' => now(),
-                'used_by_id' => $suratKeluar->pembuat_id,
-                'surat_keluar_id' => $suratKeluar->getKey(),
-            ]);
+        $this->markGeneratedNomorAsUsed($suratKeluar);
     }
 
     public function updated(SuratKeluar $suratKeluar): void
     {
-        if ($suratKeluar->isDirty('status')) {
+        if ($suratKeluar->wasChanged('nomor_surat')) {
+            $this->releasePreviousGeneratedNomor($suratKeluar);
+            $this->markGeneratedNomorAsUsed($suratKeluar);
+        }
+
+        if ($suratKeluar->wasChanged('status')) {
             $statusLabel = match ($suratKeluar->status) {
                 'draft' => 'Draft',
                 'review' => 'Menunggu Review',
@@ -66,5 +59,45 @@ class SuratKeluarObserver
                 }
             }
         }
+    }
+
+    private function markGeneratedNomorAsUsed(SuratKeluar $suratKeluar): void
+    {
+        if (! Schema::hasTable('generated_nomor_surats') || blank($suratKeluar->nomor_surat)) {
+            return;
+        }
+
+        GeneratedNomorSurat::query()
+            ->where('nomor_surat', $suratKeluar->nomor_surat)
+            ->where(function ($query) use ($suratKeluar): void {
+                $query
+                    ->where('status', 'reserved')
+                    ->orWhere('surat_keluar_id', $suratKeluar->getKey());
+            })
+            ->update([
+                'status' => 'used',
+                'used_at' => now(),
+                'used_by_id' => $suratKeluar->pembuat_id,
+                'surat_keluar_id' => $suratKeluar->getKey(),
+            ]);
+    }
+
+    private function releasePreviousGeneratedNomor(SuratKeluar $suratKeluar): void
+    {
+        $previousNomor = $suratKeluar->getOriginal('nomor_surat');
+
+        if (! Schema::hasTable('generated_nomor_surats') || blank($previousNomor)) {
+            return;
+        }
+
+        GeneratedNomorSurat::query()
+            ->where('nomor_surat', $previousNomor)
+            ->where('surat_keluar_id', $suratKeluar->getKey())
+            ->update([
+                'status' => 'reserved',
+                'used_at' => null,
+                'used_by_id' => null,
+                'surat_keluar_id' => null,
+            ]);
     }
 }

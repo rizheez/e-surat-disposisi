@@ -6,13 +6,35 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>{{ $suratKeluar->nomor_surat }}</title>
     <style>
+        @font-face {
+            font-family: 'Candara';
+            font-style: normal;
+            font-weight: normal;
+            src: url("{{ public_path('fonts/Candara.ttf') }}") format('truetype');
+        }
+
+        @font-face {
+            font-family: 'Candaraz';
+            font-style: italic;
+            font-weight: normal;
+            src: url("{{ public_path('fonts/Candaraz.ttf') }}") format('truetype');
+        }
+
         @page {
             margin: 0;
         }
 
+        .candaraz {
+            font-family: 'Candaraz', sans-serif;
+            font-size: 11pt;
+            /* make italic */
+            font-style: italic;
+            line-height: 0.5;
+        }
+
         body {
-            font-family: 'Times New Roman', serif;
-            font-size: 12pt;
+            font-family: 'Candara', sans-serif;
+            font-size: 11pt;
             line-height: 1;
             color: #000;
             margin: 0;
@@ -199,13 +221,14 @@
             <div style="margin-bottom: 10px;">
                 <p>Kepada, Yth.</p>
                 <p><strong>{{ $suratKeluar->tujuan }}</strong></p>
-                <p>Di &ndash;</p>
-                <p style="margin-bottom: 10px;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tempat</p>
-                <p><strong>Assalamu&rsquo;alaikum Wr. Wb.</strong></p>
+                <p>Di &ndash; Tempat</p>
+                {{-- <p style="margin-bottom: 10px;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</p> --}}
             </div>
 
             {{-- ═══ Isi Surat (Dynamic — hanya isi/body surat) ═══ --}}
             <div class="isi-surat">
+                <p class="candaraz"><strong>Assalamu&rsquo;alaikum Wr. Wb.</strong></p>
+
                 @if ($suratKeluar->isi_surat)
                     {!! $suratKeluar->isi_surat !!}
                 @else
@@ -215,8 +238,8 @@
 
             {{-- ═══ Salam Penutup (Fixed Template) ═══ --}}
             <div style="margin-bottom: 5px;">
-                <p><strong>Wallahul Muwaffieq Ilaa Aqwamith Tharieq</strong></p>
-                <p><strong>Wassalammu&rsquo;alaikum Wr. Wb.</strong></p>
+                <p class="candaraz"><strong>Wallahul Muwaffieq Ilaa Aqwamith Tharieq</strong></p>
+                <p class="candaraz"><strong>Wassalammu&rsquo;alaikum Wp. Wb.</strong></p>
             </div>
 
             {{-- ═══ TTD (Fixed) ═══ --}}
