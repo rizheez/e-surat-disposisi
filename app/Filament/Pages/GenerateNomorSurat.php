@@ -81,11 +81,11 @@ class GenerateNomorSurat extends Page implements HasTable
                         Forms\Components\TextInput::make('tujuan')
                             ->label('Tujuan')
                             ->maxLength(255)
-                            ->required(),
+                            ->placeholder('Opsional'),
                         Forms\Components\Textarea::make('perihal')
                             ->label('Perihal')
                             ->rows(3)
-                            ->required()
+                            ->placeholder('Opsional')
                             ->columnSpanFull(),
                         Forms\Components\Select::make('sifat_surat')
                             ->label('Sifat Surat')
@@ -129,10 +129,12 @@ class GenerateNomorSurat extends Page implements HasTable
                     ->default('-'),
                 Tables\Columns\TextColumn::make('tujuan')
                     ->label('Tujuan')
+                    ->default('-')
                     ->searchable()
                     ->limit(30),
                 Tables\Columns\TextColumn::make('perihal')
                     ->label('Perihal')
+                    ->default('-')
                     ->searchable()
                     ->limit(40),
                 Tables\Columns\TextColumn::make('status')
@@ -170,8 +172,8 @@ class GenerateNomorSurat extends Page implements HasTable
             return GeneratedNomorSurat::create([
                 'nomor_surat' => SuratKeluar::generateNomorSurat((int) $data['klasifikasi'], $data['tanggal_surat']),
                 'tanggal_surat' => $data['tanggal_surat'],
-                'tujuan' => $data['tujuan'],
-                'perihal' => $data['perihal'],
+                'tujuan' => $data['tujuan'] ?? null,
+                'perihal' => $data['perihal'] ?? null,
                 'klasifikasi' => $data['klasifikasi'],
                 'sifat_surat' => $data['sifat_surat'],
                 'status' => 'reserved',

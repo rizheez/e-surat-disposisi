@@ -12,6 +12,12 @@ class CreateSuratKeluar extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['pembuat_id'] = auth()->id();
+
+        if (filled($data['file_path'] ?? null)) {
+            $data['status'] = 'approved';
+            $data['approved_at'] = now();
+        }
+
         return $data;
     }
 

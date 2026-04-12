@@ -53,6 +53,16 @@ class SuratKeluarPolicyTest extends TestCase
         $this->assertFalse($policy->submitReview($user, $suratKeluar));
     }
 
+    public function test_uploaded_surat_keluar_cannot_be_submitted_for_review(): void
+    {
+        $policy = new SuratKeluarPolicy;
+        $user = $this->user(id: 1);
+        $suratKeluar = $this->suratKeluar(pembuatId: 1, status: 'draft');
+        $suratKeluar->file_path = 'surat-keluar/signed.pdf';
+
+        $this->assertFalse($policy->submitReview($user, $suratKeluar));
+    }
+
     public function test_non_creator_cannot_send_approved_surat_keluar(): void
     {
         $policy = new SuratKeluarPolicy;

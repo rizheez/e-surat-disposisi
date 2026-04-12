@@ -10,6 +10,16 @@ class EditSuratKeluar extends EditRecord
 {
     protected static string $resource = SuratKeluarResource::class;
 
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        if (filled($data['file_path'] ?? null) && $this->record->status === 'draft') {
+            $data['status'] = 'approved';
+            $data['approved_at'] = $this->record->approved_at ?? now();
+        }
+
+        return $data;
+    }
+
     protected function getHeaderActions(): array
     {
         return [

@@ -66,7 +66,7 @@ class SuratKeluarPolicy
      */
     public function submitReview(User $user, SuratKeluar $suratKeluar): bool
     {
-        if ($suratKeluar->status !== 'draft') {
+        if ($suratKeluar->status !== 'draft' || filled($suratKeluar->file_path)) {
             return false;
         }
 

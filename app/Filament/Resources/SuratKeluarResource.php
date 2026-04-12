@@ -201,7 +201,7 @@ class SuratKeluarResource extends Resource
                             ->maxSize(self::MAX_UPLOAD_SIZE_KB)
                             ->required(fn (Get $get): bool => $get('metode') === 'upload')
                             ->helperText(new HtmlString(
-                                'Maks. '.self::MAX_UPLOAD_SIZE_MB.' MB dan hanya PDF. Jika file di atas '.self::MAX_UPLOAD_SIZE_MB.' MB, kompres dulu di <a href="'.self::COMPRESS_PDF_URL.'" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 underline">iLovePDF Compress PDF</a>.'
+                                'Maks. '.self::MAX_UPLOAD_SIZE_MB.' MB dan hanya PDF. Upload PDF dianggap sudah ditandatangani, sehingga langsung masuk status Disetujui. Jika file di atas '.self::MAX_UPLOAD_SIZE_MB.' MB, kompres dulu di <a href="'.self::COMPRESS_PDF_URL.'" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 underline">iLovePDF Compress PDF</a>.'
                             ))
                             ->validationMessages([
                                 'max' => 'File maksimal '.self::MAX_UPLOAD_SIZE_MB.' MB. Kompres PDF terlebih dahulu di '.self::COMPRESS_PDF_URL,
