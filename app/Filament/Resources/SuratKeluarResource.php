@@ -178,7 +178,11 @@ class SuratKeluarResource extends Resource
                     ->description('Tulis isi surat mulai dari "Kepada Yth." atau salam pembuka hingga salam penutup.')
                     ->schema([
                         Forms\Components\RichEditor::make('isi_surat')
-                            ->label('Isi Surat'),
+                            ->label('Isi Surat')
+                            ->extraInputAttributes([
+                                'class' => 'surat-pdf-rich-editor',
+                                'style' => 'min-height: 16rem;',
+                            ]),
                     ])
                     ->columns(1)
                     ->columnSpanFull()

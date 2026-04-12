@@ -256,7 +256,7 @@
             {{-- ═══ Salam Penutup (Fixed Template) ═══ --}}
             <div style="margin-bottom: 5px;">
                 <p class="candaraz"><strong>Wallahul Muwaffieq Ilaa Aqwamith Tharieq</strong></p>
-                <p class="candaraz"><strong>Wassalammu&rsquo;alaikum Wp. Wb.</strong></p>
+                <p class="candaraz"><strong>Wassalammu&rsquo;alaikum Wr. Wb.</strong></p>
             </div>
 
             {{-- ═══ TTD (Fixed) ═══ --}}

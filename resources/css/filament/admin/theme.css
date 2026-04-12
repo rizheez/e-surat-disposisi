@@ -3,3 +3,28 @@
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
+
+@font-face {
+    font-family: 'Candara';
+    src: url('/fonts/Candara.ttf') format('truetype');
+    font-style: normal;
+    font-weight: 400;
+}
+
+.surat-pdf-rich-editor .fi-fo-rich-editor-content,
+.surat-pdf-rich-editor .tiptap.ProseMirror {
+    font-family: 'Candara', sans-serif;
+    font-size: 11pt;
+    line-height: 1;
+}
+
+.surat-pdf-rich-editor .tiptap.ProseMirror p {
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+.surat-pdf-rich-editor .tiptap.ProseMirror ol,
+.surat-pdf-rich-editor .tiptap.ProseMirror ul {
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
