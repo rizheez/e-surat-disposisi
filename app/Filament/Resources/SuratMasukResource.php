@@ -108,6 +108,7 @@ class SuratMasukResource extends Resource
                     ->schema([
                         Forms\Components\FileUpload::make('file_path')
                             ->label('File Surat (PDF/Scan)')
+                            ->disk('public')
                             ->directory('surat-masuk')
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
                             ->maxSize(10240)

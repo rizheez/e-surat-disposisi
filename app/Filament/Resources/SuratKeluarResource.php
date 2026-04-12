@@ -21,10 +21,17 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 use UnitEnum;
 
 class SuratKeluarResource extends Resource
 {
+    private const MAX_UPLOAD_SIZE_KB = 3072;
+
+    private const MAX_UPLOAD_SIZE_MB = 3;
+
+    private const COMPRESS_PDF_URL = 'https://www.ilovepdf.com/compress_pdf';
+
     protected static ?string $model = SuratKeluar::class;
 
     protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-paper-airplane';
@@ -50,7 +57,7 @@ class SuratKeluarResource extends Resource
                             ->label('Metode Pembuatan')
                             ->options([
                                 'web' => 'Buat di Web - nomor surat otomatis',
-                                'upload' => 'Upload File (.docx/.pdf) - pilih nomor dari Generate Nomor',
+                                'upload' => 'Upload File PDF - pilih nomor dari Generate Nomor',
                             ])
                             ->default(fn (?SuratKeluar $record): string => self::getMetodeValue($record))
                             ->afterStateHydrated(function (Set $set, ?SuratKeluar $record): void {
@@ -181,16 +188,21 @@ class SuratKeluarResource extends Resource
                 Section::make('Upload Dokumen')
                     ->schema([
                         Forms\Components\FileUpload::make('file_path')
-                            ->label('File Surat (.docx / .pdf)')
+                            ->label('File Surat (PDF)')
+                            ->disk('public')
                             ->directory('surat-keluar')
                             ->acceptedFileTypes([
                                 'application/pdf',
-                                'application/msword',
-                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                             ])
-                            ->maxSize(10240)
+                            ->maxSize(self::MAX_UPLOAD_SIZE_KB)
                             ->required(fn (Get $get): bool => $get('metode') === 'upload')
-                            ->helperText('Maks. 10MB'),
+                            ->helperText(new HtmlString(
+                                'Maks. '.self::MAX_UPLOAD_SIZE_MB.' MB dan hanya PDF. Jika file di atas '.self::MAX_UPLOAD_SIZE_MB.' MB, kompres dulu di <a href="'.self::COMPRESS_PDF_URL.'" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 underline">iLovePDF Compress PDF</a>.'
+                            ))
+                            ->validationMessages([
+                                'max' => 'File maksimal '.self::MAX_UPLOAD_SIZE_MB.' MB. Kompres PDF terlebih dahulu di '.self::COMPRESS_PDF_URL,
+                                'mimetypes' => 'File surat harus berupa PDF.',
+                            ]),
                     ])
                     ->columnSpanFull()
                     ->visible(fn (Get $get): bool => $get('metode') === 'upload'),
@@ -302,13 +314,13 @@ class SuratKeluarResource extends Resource
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('warning')
                     ->requiresConfirmation()
+                    ->authorize('submitReview')
                     ->action(function (SuratKeluar $record) {
                         $record->update(['status' => 'review']);
                         Notification::make()->title('Surat disubmit untuk review')->success()->send();
                     })
                     ->visible(
-                        fn ($record) => $record->status === 'draft'
-                            && (Auth::id() === $record->pembuat_id || Auth::user()?->hasRole('admin'))
+                        fn (SuratKeluar $record): bool => Auth::user()?->can('submitReview', $record) ?? false
                     ),
                 \Filament\Actions\Action::make('approve')
                     ->label('Setujui')
@@ -336,11 +348,12 @@ class SuratKeluarResource extends Resource
                     ->icon('heroicon-o-paper-airplane')
                     ->color('info')
                     ->requiresConfirmation()
+                    ->authorize('kirim')
                     ->action(function (SuratKeluar $record) {
                         $record->update(['status' => 'sent', 'tanggal_kirim' => now()]);
                         Notification::make()->title('Surat telah dikirim')->success()->send();
                     })
-                    ->visible(fn ($record) => $record->status === 'approved'),
+                    ->visible(fn (SuratKeluar $record): bool => Auth::user()?->can('kirim', $record) ?? false),
                 \Filament\Actions\Action::make('tolak')
                     ->label('Tolak')
                     ->icon('heroicon-o-x-mark')
@@ -382,9 +395,9 @@ class SuratKeluarResource extends Resource
                     ->visible(fn ($record) => $record->status === 'sent' && ! $record->archived_at),
                 \Filament\Actions\ViewAction::make(),
                 \Filament\Actions\EditAction::make()
-                    ->visible(fn ($record) => $record->status === 'draft'),
+                    ->visible(fn (SuratKeluar $record): bool => self::canEdit($record)),
                 \Filament\Actions\DeleteAction::make()
-                    ->visible(fn ($record) => $record->status === 'draft'),
+                    ->visible(fn (SuratKeluar $record): bool => self::canDelete($record)),
                 \Filament\Actions\RestoreAction::make(),
             ])
             ->bulkActions([
@@ -412,7 +425,22 @@ class SuratKeluarResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->withTrashed();
+        $query = parent::getEloquentQuery()->withTrashed();
+
+        $user = Auth::user();
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($user->isAdminRole()) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $query) use ($user): void {
+            $query
+                ->where('pembuat_id', $user->id)
+                ->orWhere('penandatangan_id', $user->id);
+        });
     }
 
     private static function getMetodeValue(?SuratKeluar $record = null): string

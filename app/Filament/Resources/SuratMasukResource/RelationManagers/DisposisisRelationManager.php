@@ -11,6 +11,8 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class DisposisisRelationManager extends RelationManager
 {
@@ -56,6 +58,27 @@ class DisposisisRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('instruksi')
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                $user = Auth::user();
+                if (! $user) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                if ($user->isAdminRole()) {
+                    return $query;
+                }
+
+                $unitId = $user->unit_kerja_id;
+
+                return $query->where(function (Builder $query) use ($user, $unitId): void {
+                    $query
+                        ->where('dari_user_id', $user->id)
+                        ->orWhere('ke_user_id', $user->id)
+                        ->when(filled($unitId), function (Builder $query) use ($unitId): void {
+                            $query->orWhere('ke_unit_id', $unitId);
+                        });
+                });
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('dariUser.name')
                     ->label('Dari'),
@@ -174,7 +197,8 @@ class DisposisisRelationManager extends RelationManager
                 \Filament\Actions\Action::make('updateStatus')
                     ->label('Update Status')
                     ->icon('heroicon-o-arrow-path')
-                    ->visible(fn (Disposisi $record): bool => ! $record->is_tembusan)
+                    ->authorize('updateStatus')
+                    ->visible(fn (Disposisi $record): bool => Auth::user()?->can('updateStatus', $record) ?? false)
                     ->form([
                         Forms\Components\Select::make('status')
                             ->options([

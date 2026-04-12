@@ -8,6 +8,7 @@ use App\Models\GeneratedNomorSurat;
 use App\Models\SuratKeluar;
 use App\Models\User;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 
@@ -34,29 +35,36 @@ class SuratKeluarObserver
                 default => $suratKeluar->status,
             };
 
-            // Notify pembuat when status changes (e.g., approved, rejected)
-            if ($suratKeluar->pembuat_id && $suratKeluar->pembuat_id !== Auth::id()) {
-                $pembuat = User::find($suratKeluar->pembuat_id);
-                if ($pembuat) {
-                    Notification::make()
+            if (filled($suratKeluar->pembuat_id)) {
+                $this->sendToUsers(
+                    users: collect([User::find($suratKeluar->pembuat_id)]),
+                    notification: Notification::make()
                         ->title("Surat Keluar: {$statusLabel}")
                         ->body("{$suratKeluar->nomor_surat} - {$suratKeluar->perihal}")
                         ->icon('heroicon-o-paper-clip')
-                        ->iconColor($suratKeluar->status === 'approved' ? 'success' : 'warning')
-                        ->sendToDatabase($pembuat);
-                }
+                        ->iconColor($suratKeluar->status === 'approved' ? 'success' : 'warning'),
+                );
             }
 
             if ($suratKeluar->status === 'review') {
-                $pejabatStruktural = User::role(User::leadershipRoleNames())->get();
-                foreach ($pejabatStruktural as $pejabat) {
-                    Notification::make()
-                        ->title('Surat Keluar Menunggu Review')
-                        ->body("{$suratKeluar->perihal}")
-                        ->icon('heroicon-o-clipboard-document-check')
-                        ->iconColor('warning')
-                        ->sendToDatabase($pejabat);
+                $reviewers = collect();
+
+                if (filled($suratKeluar->penandatangan_id)) {
+                    $reviewers->push(User::find($suratKeluar->penandatangan_id));
                 }
+
+                if ($reviewers->filter()->isEmpty()) {
+                    $reviewers = User::role(User::leadershipRoleNames())->get();
+                }
+
+                $this->sendToUsers(
+                    users: $reviewers,
+                    notification: Notification::make()
+                        ->title('Surat Keluar Menunggu Review')
+                        ->body("{$suratKeluar->nomor_surat} - {$suratKeluar->perihal}")
+                        ->icon('heroicon-o-clipboard-document-check')
+                        ->iconColor('warning'),
+                );
             }
         }
     }
@@ -99,5 +107,13 @@ class SuratKeluarObserver
                 'used_by_id' => null,
                 'surat_keluar_id' => null,
             ]);
+    }
+
+    private function sendToUsers(Collection $users, Notification $notification): void
+    {
+        $users
+            ->filter(fn (?User $user): bool => filled($user) && $user->id !== Auth::id())
+            ->unique('id')
+            ->each(fn (User $user): mixed => $notification->sendToDatabase($user));
     }
 }

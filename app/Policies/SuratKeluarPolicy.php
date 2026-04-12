@@ -17,12 +17,11 @@ class SuratKeluarPolicy
         return $user->canCreateSuratKeluar();
     }
 
-    /**
-     * Semua user panel bisa melihat detail surat keluar.
-     */
     public function view(User $user, SuratKeluar $suratKeluar): bool
     {
-        return $user->canCreateSuratKeluar();
+        return $user->isAdminRole()
+            || $this->isOwnedByUser($user, $suratKeluar)
+            || $this->isSignedByUser($user, $suratKeluar);
     }
 
     /**
@@ -34,27 +33,56 @@ class SuratKeluarPolicy
     }
 
     /**
-     * Semua user panel bisa edit, tapi hanya jika surat masih draft.
+     * Admin bisa edit semua, user lain hanya surat draft yang dia buat.
      */
     public function update(User $user, SuratKeluar $suratKeluar): bool
     {
-        if (! $user->canCreateSuratKeluar()) {
-            return false;
+        if ($user->isAdminRole()) {
+            return true;
         }
 
-        return $suratKeluar->status === 'draft';
+        return $this->isDraftOwnedByUser($user, $suratKeluar);
     }
 
     /**
-     * Semua user panel bisa hapus, tapi hanya jika surat masih draft.
+     * Admin bisa menghapus semua, user lain hanya surat draft yang dia buat.
      */
     public function delete(User $user, SuratKeluar $suratKeluar): bool
     {
-        if (! $user->canCreateSuratKeluar()) {
+        if ($user->isAdminRole()) {
+            return true;
+        }
+
+        return $this->isDraftOwnedByUser($user, $suratKeluar);
+    }
+
+    public function deleteAny(User $user): bool
+    {
+        return $user->canCreateSuratKeluar();
+    }
+
+    /**
+     * Admin bisa submit semua draft, user lain hanya draft yang dia buat.
+     */
+    public function submitReview(User $user, SuratKeluar $suratKeluar): bool
+    {
+        if ($suratKeluar->status !== 'draft') {
             return false;
         }
 
-        return $suratKeluar->status === 'draft';
+        return $user->isAdminRole() || $this->isOwnedByUser($user, $suratKeluar);
+    }
+
+    /**
+     * Admin bisa kirim semua surat approved, user lain hanya surat yang dia buat.
+     */
+    public function kirim(User $user, SuratKeluar $suratKeluar): bool
+    {
+        if ($suratKeluar->status !== 'approved') {
+            return false;
+        }
+
+        return $user->isAdminRole() || $this->isOwnedByUser($user, $suratKeluar);
     }
 
     /**
@@ -89,5 +117,24 @@ class SuratKeluarPolicy
     {
         return $suratKeluar->penandatangan_id === $user->id
             && $suratKeluar->status === 'review';
+    }
+
+    private function isDraftOwnedByUser(User $user, SuratKeluar $suratKeluar): bool
+    {
+        return $user->canCreateSuratKeluar()
+            && $suratKeluar->status === 'draft'
+            && $this->isOwnedByUser($user, $suratKeluar);
+    }
+
+    private function isOwnedByUser(User $user, SuratKeluar $suratKeluar): bool
+    {
+        return filled($suratKeluar->pembuat_id)
+            && (int) $suratKeluar->pembuat_id === (int) $user->id;
+    }
+
+    private function isSignedByUser(User $user, SuratKeluar $suratKeluar): bool
+    {
+        return filled($suratKeluar->penandatangan_id)
+            && (int) $suratKeluar->penandatangan_id === (int) $user->id;
     }
 }

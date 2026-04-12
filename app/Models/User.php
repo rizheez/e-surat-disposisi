@@ -122,6 +122,6 @@ class User extends Authenticatable implements FilamentUser
 
     public function suratKeluars(): HasMany
     {
-        return $this->hasMany(SuratKeluar::class, 'created_by');
+        return $this->hasMany(SuratKeluar::class, 'pembuat_id');
     }
 }

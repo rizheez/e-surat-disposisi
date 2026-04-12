@@ -22,7 +22,11 @@ class SuratMasukPolicy
      */
     public function view(User $user, SuratMasuk $suratMasuk): bool
     {
-        return $user->canManageSuratMasuk() || $user->canManageDisposisi();
+        if ($user->canManageSuratMasuk()) {
+            return true;
+        }
+
+        return $this->isRelevantToUser($user, $suratMasuk);
     }
 
     /**
@@ -49,10 +53,20 @@ class SuratMasukPolicy
         return $user->canManageSuratMasuk();
     }
 
+    public function deleteAny(User $user): bool
+    {
+        return $user->canManageSuratMasuk();
+    }
+
     /**
      * Hanya admin yang bisa restore surat masuk yang dihapus.
      */
     public function restore(User $user, SuratMasuk $suratMasuk): bool
+    {
+        return $user->isAdminRole();
+    }
+
+    public function restoreAny(User $user): bool
     {
         return $user->isAdminRole();
     }
@@ -63,5 +77,29 @@ class SuratMasukPolicy
     public function forceDelete(User $user, SuratMasuk $suratMasuk): bool
     {
         return $user->isAdminRole();
+    }
+
+    public function forceDeleteAny(User $user): bool
+    {
+        return $user->isAdminRole();
+    }
+
+    private function isRelevantToUser(User $user, SuratMasuk $suratMasuk): bool
+    {
+        if (filled($suratMasuk->penerima) && (int) $suratMasuk->penerima === (int) $user->id) {
+            return true;
+        }
+
+        $unitId = $user->unit_kerja_id;
+
+        return $suratMasuk->disposisis()
+            ->where(function ($query) use ($user, $unitId): void {
+                $query->where('ke_user_id', $user->id);
+
+                if (filled($unitId)) {
+                    $query->orWhere('ke_unit_id', $unitId);
+                }
+            })
+            ->exists();
     }
 }

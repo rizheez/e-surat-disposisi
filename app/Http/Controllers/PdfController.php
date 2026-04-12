@@ -6,11 +6,14 @@ use App\Models\SuratKeluar;
 use App\Services\QrSignatureService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Gate;
 
 class PdfController extends Controller
 {
     public function suratKeluar(SuratKeluar $suratKeluar): \Symfony\Component\HttpFoundation\Response
     {
+        Gate::authorize('view', $suratKeluar);
+
         File::ensureDirectoryExists(storage_path('fonts'));
 
         $suratKeluar->load(['pembuat', 'penandatangan', 'suratMasuk']);
@@ -31,6 +34,8 @@ class PdfController extends Controller
 
     public function suratKeluarPreview(SuratKeluar $suratKeluar): \Symfony\Component\HttpFoundation\Response
     {
+        Gate::authorize('view', $suratKeluar);
+
         File::ensureDirectoryExists(storage_path('fonts'));
 
         $suratKeluar->load(['pembuat', 'penandatangan', 'suratMasuk']);

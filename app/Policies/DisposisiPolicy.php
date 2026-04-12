@@ -9,20 +9,16 @@ use App\Models\User;
 
 class DisposisiPolicy
 {
-    /**
-     * Semua role bisa melihat daftar disposisi.
-     */
     public function viewAny(User $user): bool
     {
         return $user->canCreateSuratKeluar();
     }
 
-    /**
-     * Semua role bisa melihat detail disposisi.
-     */
     public function view(User $user, Disposisi $disposisi): bool
     {
-        return $user->canCreateSuratKeluar();
+        return $user->isAdminRole()
+            || $this->isCreatedByUser($user, $disposisi)
+            || $this->isAssignedToUser($user, $disposisi);
     }
 
     /**
@@ -56,5 +52,54 @@ class DisposisiPolicy
     public function delete(User $user, Disposisi $disposisi): bool
     {
         return $user->isAdminRole();
+    }
+
+    public function deleteAny(User $user): bool
+    {
+        return $user->isAdminRole();
+    }
+
+    public function process(User $user, Disposisi $disposisi): bool
+    {
+        return $disposisi->status === 'belum_diproses'
+            && ! $disposisi->is_tembusan
+            && ($user->isAdminRole() || $this->isAssignedToUser($user, $disposisi));
+    }
+
+    public function complete(User $user, Disposisi $disposisi): bool
+    {
+        return $disposisi->status === 'sedang_diproses'
+            && ! $disposisi->is_tembusan
+            && ($user->isAdminRole() || $this->isAssignedToUser($user, $disposisi));
+    }
+
+    public function forward(User $user, Disposisi $disposisi): bool
+    {
+        return $disposisi->status !== 'selesai'
+            && ! $disposisi->is_tembusan
+            && ($user->isAdminRole() || $this->isAssignedToUser($user, $disposisi));
+    }
+
+    public function updateStatus(User $user, Disposisi $disposisi): bool
+    {
+        return ! $disposisi->is_tembusan
+            && ($user->isAdminRole() || $this->isAssignedToUser($user, $disposisi));
+    }
+
+    private function isCreatedByUser(User $user, Disposisi $disposisi): bool
+    {
+        return filled($disposisi->dari_user_id)
+            && (int) $disposisi->dari_user_id === (int) $user->id;
+    }
+
+    private function isAssignedToUser(User $user, Disposisi $disposisi): bool
+    {
+        if (filled($disposisi->ke_user_id) && (int) $disposisi->ke_user_id === (int) $user->id) {
+            return true;
+        }
+
+        return filled($disposisi->ke_unit_id)
+            && filled($user->unit_kerja_id)
+            && (int) $disposisi->ke_unit_id === (int) $user->unit_kerja_id;
     }
 }
