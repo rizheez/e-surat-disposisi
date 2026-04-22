@@ -28,6 +28,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->darkMode(false)
             ->login()
             ->brandName('UNU E-Surat')
             ->colors([
