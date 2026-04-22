@@ -93,7 +93,7 @@
                     <ol class="mt-2 list-decimal space-y-2 pl-5">
                         <li>Gunakan aksi <strong>Buat Disposisi</strong> untuk meneruskan surat ke user atau unit kerja.
                         </li>
-                        <li>Isi instruksi, catatan, dan batas waktu disposisi bila diperlukan.</li>
+                        <li>Isi instruksi dan batas waktu disposisi bila diperlukan.</li>
                         <li>Gunakan aksi <strong>Tandai Selesai</strong> jika pekerjaan terhadap surat sudah selesai.
                         </li>
                         <li>Gunakan aksi <strong>Arsipkan</strong> untuk memindahkan surat selesai ke Arsip Surat.</li>
@@ -227,9 +227,9 @@
                         <li>Buat disposisi dari Surat Masuk atau menu Disposisi.</li>
                         <li>Pilih <strong>Jenis Tujuan</strong>: User atau Unit Kerja.</li>
                         <li>Pilih user tujuan atau unit kerja tujuan sesuai jenis yang dipilih.</li>
-                        <li>Isi instruksi, catatan, dan batas waktu bila ada.</li>
+                        <li>Isi instruksi dan batas waktu bila ada.</li>
                         <li>Klik <strong>Proses</strong> saat disposisi mulai dikerjakan.</li>
-                        <li>Klik <strong>Selesai</strong> jika instruksi sudah dilaksanakan.</li>
+                        <li>Klik <strong>Selesai</strong> jika instruksi sudah dilaksanakan, lalu isi catatan penyelesaian.</li>
                         <li>Gunakan <strong>Teruskan</strong> jika disposisi perlu diteruskan ke penerima lanjutan.</li>
                     </ol>
                 </div>
