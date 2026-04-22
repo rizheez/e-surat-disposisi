@@ -14,86 +14,93 @@ class DisposisiPolicy
     
     public function viewAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ViewAny:Disposisi');
+        return $this->hasPermission($authUser, 'ViewAny:Disposisi');
     }
 
     public function view(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $this->isAdmin($authUser) || $this->isParticipant($authUser, $disposisi);
+        return $this->isAdmin($authUser)
+            || $this->hasPermission($authUser, 'View:Disposisi')
+            || $this->isParticipant($authUser, $disposisi);
     }
 
     public function create(AuthUser $authUser): bool
     {
-        return $authUser->can('Create:Disposisi');
+        return false;
     }
 
     public function update(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $this->isAdmin($authUser) || $this->isActiveTarget($authUser, $disposisi);
+        return $this->isAdmin($authUser)
+            || $this->hasPermission($authUser, 'Update:Disposisi')
+            || $this->isActiveTarget($authUser, $disposisi);
     }
 
     public function delete(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $this->isAdmin($authUser);
+        return $this->isAdmin($authUser) || $this->hasPermission($authUser, 'Delete:Disposisi');
     }
 
     public function deleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('DeleteAny:Disposisi');
+        return $this->hasPermission($authUser, 'DeleteAny:Disposisi');
     }
 
     public function restore(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $authUser->can('Restore:Disposisi');
+        return $this->hasPermission($authUser, 'Restore:Disposisi');
     }
 
     public function forceDelete(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $this->isAdmin($authUser);
+        return $this->isAdmin($authUser) || $this->hasPermission($authUser, 'ForceDelete:Disposisi');
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ForceDeleteAny:Disposisi');
+        return $this->hasPermission($authUser, 'ForceDeleteAny:Disposisi');
     }
 
     public function restoreAny(AuthUser $authUser): bool
     {
-        return $authUser->can('RestoreAny:Disposisi');
+        return $this->hasPermission($authUser, 'RestoreAny:Disposisi');
     }
 
     public function replicate(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $authUser->can('Replicate:Disposisi');
+        return $this->hasPermission($authUser, 'Replicate:Disposisi');
     }
 
     public function reorder(AuthUser $authUser): bool
     {
-        return $authUser->can('Reorder:Disposisi');
+        return $this->hasPermission($authUser, 'Reorder:Disposisi');
     }
 
     public function process(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return ($this->isAdmin($authUser) || $this->isActiveTarget($authUser, $disposisi))
-            && $disposisi->status === 'belum_diproses';
+        return $this->isActionable($disposisi)
+            && $disposisi->status === 'belum_diproses'
+            && ($this->isAdmin($authUser) || $this->isActiveTarget($authUser, $disposisi));
     }
 
     public function complete(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return ($this->isAdmin($authUser) || $this->isActiveTarget($authUser, $disposisi))
-            && $disposisi->status !== 'selesai';
+        return $this->isActionable($disposisi)
+            && $disposisi->status === 'sedang_diproses'
+            && ! $this->hasBeenForwarded($disposisi)
+            && ($this->isAdmin($authUser) || $this->isActiveTarget($authUser, $disposisi));
     }
 
     public function forward(AuthUser $authUser, Disposisi $disposisi): bool
     {
         return $this->isActionable($disposisi)
-            && ($this->isAdmin($authUser) || $this->isTarget($authUser, $disposisi));
+            && ! $this->hasBeenForwarded($disposisi)
+            && ($this->isAdmin($authUser) || $this->isActiveTarget($authUser, $disposisi));
     }
 
     public function updateStatus(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $this->isActionable($disposisi)
-            && ($this->isAdmin($authUser) || $this->isTarget($authUser, $disposisi));
+        return $this->forward($authUser, $disposisi);
     }
 
     private function isAdmin(AuthUser $authUser): bool
@@ -101,16 +108,24 @@ class DisposisiPolicy
         return method_exists($authUser, 'isAdminRole') && $authUser->isAdminRole();
     }
 
+    private function hasPermission(AuthUser $authUser, string $permission): bool
+    {
+        try {
+            return $authUser->can($permission);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
     private function isParticipant(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $disposisi->dari_user_id === $authUser->getKey()
+        return (int) $disposisi->dari_user_id === (int) $authUser->getAuthIdentifier()
             || $this->isTarget($authUser, $disposisi);
     }
 
     private function isActiveTarget(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $this->isActionable($disposisi)
-            && $this->isTarget($authUser, $disposisi);
+        return ! $disposisi->is_tembusan && $this->isTarget($authUser, $disposisi);
     }
 
     private function isActionable(Disposisi $disposisi): bool
@@ -118,14 +133,28 @@ class DisposisiPolicy
         return ! $disposisi->is_tembusan && $disposisi->status !== 'selesai';
     }
 
+    private function hasBeenForwarded(Disposisi $disposisi): bool
+    {
+        if ($disposisi->relationLoaded('children')) {
+            return $disposisi->children->isNotEmpty();
+        }
+
+        if (! $disposisi->exists) {
+            return false;
+        }
+
+        return $disposisi->children()->exists();
+    }
+
     private function isTarget(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $disposisi->ke_user_id === $authUser->getKey()
-            || (
-                filled($disposisi->ke_unit_id)
-                && filled($authUser->unit_kerja_id)
-                && $disposisi->ke_unit_id === $authUser->unit_kerja_id
-            );
+        if (filled($disposisi->ke_user_id) && (int) $disposisi->ke_user_id === (int) $authUser->getAuthIdentifier()) {
+            return true;
+        }
+
+        return filled($disposisi->ke_unit_id)
+            && filled($authUser->unit_kerja_id)
+            && (int) $disposisi->ke_unit_id === (int) $authUser->unit_kerja_id;
     }
 
 }

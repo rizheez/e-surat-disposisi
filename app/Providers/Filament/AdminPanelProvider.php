@@ -40,17 +40,17 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->navigationGroups([
                 'Persuratan',
-                'Disposisi',
                 'Master Data',
+                'Pengaturan',
             ])
             ->plugins([
                 FilamentShieldPlugin::make()
-                    ->navigationGroup('Master Data')
+                    ->navigationGroup('Pengaturan')
                     ->navigationLabel('Role Management')
                     ->modelLabel('Role')
                     ->pluralModelLabel('Role Management')
                     ->navigationIcon('heroicon-o-shield-check')
-                    ->navigationSort(3),
+                    ->navigationSort(1),
             ])
             ->databaseNotifications()
             ->globalSearch(false)

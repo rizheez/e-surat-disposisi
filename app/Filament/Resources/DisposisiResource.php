@@ -24,7 +24,7 @@ class DisposisiResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-paper-airplane';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Disposisi';
+    protected static string|UnitEnum|null $navigationGroup = 'Persuratan';
 
     protected static ?string $navigationLabel = 'Disposisi';
 
@@ -32,7 +32,7 @@ class DisposisiResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Disposisi';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 3;
 
     public static function getEloquentQuery(): Builder
     {
@@ -138,11 +138,6 @@ class DisposisiResource extends Resource
                             ->label('Instruksi')
                             ->placeholder('Tuliskan instruksi disposisi...')
                             ->rows(3)
-                            ->columnSpanFull(),
-                        Forms\Components\Textarea::make('catatan')
-                            ->label('Catatan')
-                            ->placeholder('Catatan tambahan...')
-                            ->rows(2)
                             ->columnSpanFull(),
                         Forms\Components\DatePicker::make('batas_waktu')
                             ->label('Batas Waktu')
@@ -267,10 +262,23 @@ class DisposisiResource extends Resource
                     ->label('Selesai')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->requiresConfirmation()
                     ->authorize('complete')
-                    ->action(function (Disposisi $record) {
-                        $record->update(['status' => 'selesai']);
+                    ->modalHeading('Selesaikan Disposisi')
+                    ->modalSubmitActionLabel('Simpan dan Selesaikan')
+                    ->form([
+                        Forms\Components\Textarea::make('catatan')
+                            ->label('Catatan Penyelesaian')
+                            ->placeholder('Tuliskan hasil tindak lanjut atau alasan disposisi dinyatakan selesai...')
+                            ->required()
+                            ->rows(4)
+                            ->maxLength(1000),
+                    ])
+                    ->action(function (Disposisi $record, array $data) {
+                        $record->update([
+                            'status' => 'selesai',
+                            'catatan' => $data['catatan'],
+                        ]);
+
                         Notification::make()
                             ->title('Disposisi Selesai')
                             ->body("Disposisi untuk surat {$record->suratMasuk->perihal} telah selesai")
@@ -335,6 +343,10 @@ class DisposisiResource extends Resource
                             'parent_id' => $record->id,
                         ]);
 
+                        if ($record->status === 'belum_diproses') {
+                            $record->update(['status' => 'sedang_diproses']);
+                        }
+
                         if ($newDisposisi->ke_user_id) {
                             $targetUser = \App\Models\User::find($newDisposisi->ke_user_id);
                             if ($targetUser) {
@@ -371,7 +383,6 @@ class DisposisiResource extends Resource
     {
         return [
             'index' => Pages\ListDisposisis::route('/'),
-            'create' => Pages\CreateDisposisi::route('/create'),
             'view' => Pages\ViewDisposisi::route('/{record}'),
             'edit' => Pages\EditDisposisi::route('/{record}/edit'),
         ];

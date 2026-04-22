@@ -90,9 +90,6 @@ class DisposisisRelationManager extends RelationManager
                     ->required()
                     ->label('Instruksi')
                     ->rows(3),
-                Forms\Components\Textarea::make('catatan')
-                    ->label('Catatan')
-                    ->rows(2),
                 Forms\Components\DatePicker::make('batas_waktu')
                     ->label('Batas Waktu'),
             ]);
@@ -211,6 +208,18 @@ class DisposisisRelationManager extends RelationManager
                         return $data;
                     })
                     ->after(function (\App\Models\Disposisi $record, array $data) {
+                        if ($record->ke_user_id) {
+                            $targetUser = \App\Models\User::find($record->ke_user_id);
+                            if ($targetUser) {
+                                Notification::make()
+                                    ->title('Disposisi Baru')
+                                    ->body("Anda menerima disposisi untuk surat: {$record->suratMasuk->perihal}")
+                                    ->icon('heroicon-o-paper-airplane')
+                                    ->iconColor('warning')
+                                    ->sendToDatabase($targetUser);
+                            }
+                        }
+
                         if (! empty($data['tembusan_user_ids'])) {
                             foreach ($data['tembusan_user_ids'] as $userId) {
                                 Disposisi::create([
@@ -251,10 +260,23 @@ class DisposisisRelationManager extends RelationManager
                                 'selesai' => 'Selesai',
                             ])
                             ->required()
+                            ->live()
                             ->label('Status Baru'),
+                        Forms\Components\Textarea::make('catatan')
+                            ->label('Catatan Penyelesaian')
+                            ->placeholder('Tuliskan hasil tindak lanjut atau alasan disposisi dinyatakan selesai...')
+                            ->visible(fn (Get $get): bool => $get('status') === 'selesai')
+                            ->required(fn (Get $get): bool => $get('status') === 'selesai')
+                            ->rows(4)
+                            ->maxLength(1000),
                     ])
                     ->action(function (Disposisi $record, array $data) {
-                        $record->update(['status' => $data['status']]);
+                        $record->update([
+                            'status' => $data['status'],
+                            'catatan' => $data['status'] === 'selesai'
+                                ? $data['catatan']
+                                : $record->catatan,
+                        ]);
                         Notification::make()
                             ->title('Status disposisi diperbarui')
                             ->success()

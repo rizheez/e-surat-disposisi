@@ -33,7 +33,7 @@ class GenerateNomorSurat extends Page implements HasTable
 
     protected static ?string $title = 'Generate Nomor Surat';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     public ?array $data = [];
 

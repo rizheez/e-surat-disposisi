@@ -29,6 +29,14 @@ class DisposisiPolicyTest extends TestCase
         $this->assertFalse($policy->view($this->user(id: 4, unitKerjaId: 11), $disposisi));
     }
 
+    public function test_global_create_disposisi_is_disabled(): void
+    {
+        $policy = new DisposisiPolicy;
+
+        $this->assertFalse($policy->create($this->user(id: 1, isAdmin: true)));
+        $this->assertFalse($policy->create($this->user(id: 2)));
+    }
+
     public function test_only_admin_or_assigned_user_can_process_complete_forward_and_update_status(): void
     {
         $policy = new DisposisiPolicy;
@@ -37,6 +45,7 @@ class DisposisiPolicyTest extends TestCase
         $this->assertTrue($policy->process($this->user(id: 2), $disposisi));
         $this->assertTrue($policy->forward($this->user(id: 2), $disposisi));
         $this->assertTrue($policy->updateStatus($this->user(id: 2), $disposisi));
+        $this->assertFalse($policy->complete($this->user(id: 2), $disposisi));
         $this->assertTrue($policy->process($this->user(id: 4, isAdmin: true), $disposisi));
         $this->assertFalse($policy->process($this->user(id: 3), $disposisi));
 
@@ -44,6 +53,17 @@ class DisposisiPolicyTest extends TestCase
 
         $this->assertTrue($policy->complete($this->user(id: 2), $disposisi));
         $this->assertFalse($policy->complete($this->user(id: 3), $disposisi));
+    }
+
+    public function test_forward_button_is_hidden_after_disposisi_has_child(): void
+    {
+        $policy = new DisposisiPolicy;
+        $disposisi = $this->disposisi(dariUserId: 1, keUserId: 2, status: 'sedang_diproses');
+        $disposisi->setRelation('children', collect([new Disposisi]));
+
+        $this->assertFalse($policy->complete($this->user(id: 2), $disposisi));
+        $this->assertFalse($policy->forward($this->user(id: 2), $disposisi));
+        $this->assertFalse($policy->updateStatus($this->user(id: 2), $disposisi));
     }
 
     public function test_tembusan_cannot_be_processed_forwarded_or_updated_by_target(): void
