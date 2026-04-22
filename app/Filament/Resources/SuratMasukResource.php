@@ -18,6 +18,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use UnitEnum;
 
 class SuratMasukResource extends Resource
@@ -49,8 +50,7 @@ class SuratMasukResource extends Resource
                         Forms\Components\TextInput::make('nomor_agenda')
                             ->maxLength(50)
                             ->label('Nomor Agenda')
-                            ->helperText('Otomatis jika kosong')
-                            ->disabled(fn(string $operation): bool => $operation === 'edit'),
+                            ->visible(fn (string $operation): bool => $operation === 'view'),
                         Forms\Components\DatePicker::make('tanggal_surat')
                             ->required()
                             ->label('Tanggal Surat')
@@ -301,10 +301,6 @@ class SuratMasukResource extends Resource
                             ->label('Instruksi')
                             ->placeholder('Tuliskan instruksi disposisi...')
                             ->rows(3),
-                        Forms\Components\Textarea::make('catatan')
-                            ->label('Catatan')
-                            ->placeholder('Catatan tambahan (opsional)')
-                            ->rows(2),
                         Forms\Components\DatePicker::make('batas_waktu')
                             ->label('Batas Waktu')
                             ->minDate(now()),
@@ -316,7 +312,6 @@ class SuratMasukResource extends Resource
                             'ke_user_id' => $data['ke_user_id'] ?? null,
                             'ke_unit_id' => $data['ke_unit_id'] ?? null,
                             'instruksi' => $data['instruksi'],
-                            'catatan' => $data['catatan'] ?? null,
                             'batas_waktu' => $data['batas_waktu'] ?? null,
                             'status' => 'belum_diproses',
                         ]);
@@ -409,6 +404,19 @@ class SuratMasukResource extends Resource
                         $record->disposisis()->where('status', '!=', 'selesai')
                             ->update(['status' => 'selesai']);
 
+                        foreach ([$record->createdBy, $record->penerimaUser] as $recipient) {
+                            if (! $recipient) {
+                                continue;
+                            }
+
+                            Notification::make()
+                                ->title('Surat Masuk Selesai')
+                                ->body("Surat masuk {$record->nomor_surat} telah ditandai selesai")
+                                ->icon('heroicon-o-check-circle')
+                                ->iconColor('success')
+                                ->sendToDatabase($recipient);
+                        }
+
                         Notification::make()
                             ->title('Surat ditandai selesai')
                             ->success()
@@ -488,6 +496,13 @@ class SuratMasukResource extends Resource
                             })
                             ->exists();
                     }),
+                \Filament\Actions\Action::make('lihatFile')
+                    ->label('Lihat File')
+                    ->icon('heroicon-o-document-magnifying-glass')
+                    ->color('info')
+                    ->url(fn (SuratMasuk $record): string => Storage::disk('public')->url($record->file_path))
+                    ->openUrlInNewTab()
+                    ->visible(fn (SuratMasuk $record): bool => filled($record->file_path)),
                 \Filament\Actions\ViewAction::make(),
                 \Filament\Actions\EditAction::make(),
                 \Filament\Actions\DeleteAction::make(),

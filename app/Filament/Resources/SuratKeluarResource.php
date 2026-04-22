@@ -321,6 +321,15 @@ class SuratKeluarResource extends Resource
                     ->authorize('submitReview')
                     ->action(function (SuratKeluar $record) {
                         $record->update(['status' => 'review']);
+                        if ($record->penandatangan) {
+                            Notification::make()
+                                ->title('Review Surat Keluar')
+                                ->body("Surat keluar {$record->nomor_surat} menunggu persetujuan Anda")
+                                ->icon('heroicon-o-document-check')
+                                ->iconColor('warning')
+                                ->sendToDatabase($record->penandatangan);
+                        }
+
                         Notification::make()->title('Surat disubmit untuk review')->success()->send();
                     })
                     ->visible(
@@ -341,6 +350,15 @@ class SuratKeluarResource extends Resource
                         $record->status = 'approved';
                         $record->approved_at = now();
                         $record->save();
+                        if ($record->pembuat) {
+                            Notification::make()
+                                ->title('Surat Keluar Disetujui')
+                                ->body("Surat keluar {$record->nomor_surat} telah disetujui")
+                                ->icon('heroicon-o-check-circle')
+                                ->iconColor('success')
+                                ->sendToDatabase($record->pembuat);
+                        }
+
                         Notification::make()->title('Surat disetujui & QR dibuat')->success()->send();
                     })
                     ->visible(
@@ -355,6 +373,15 @@ class SuratKeluarResource extends Resource
                     ->authorize('kirim')
                     ->action(function (SuratKeluar $record) {
                         $record->update(['status' => 'sent', 'tanggal_kirim' => now()]);
+                        if ($record->pembuat) {
+                            Notification::make()
+                                ->title('Surat Keluar Terkirim')
+                                ->body("Surat keluar {$record->nomor_surat} telah dikirim")
+                                ->icon('heroicon-o-paper-airplane')
+                                ->iconColor('info')
+                                ->sendToDatabase($record->pembuat);
+                        }
+
                         Notification::make()->title('Surat telah dikirim')->success()->send();
                     })
                     ->visible(fn (SuratKeluar $record): bool => Auth::user()?->can('kirim', $record) ?? false),
@@ -365,7 +392,19 @@ class SuratKeluarResource extends Resource
                     ->requiresConfirmation()
                     ->modalDescription('Surat akan dikembalikan ke status draft.')
                     ->action(function (SuratKeluar $record) {
+                        $creator = $record->pembuat;
+                        $nomorSurat = $record->nomor_surat;
+
                         $record->update(['status' => 'draft', 'penandatangan_id' => null]);
+                        if ($creator) {
+                            Notification::make()
+                                ->title('Surat Keluar Ditolak')
+                                ->body("Surat keluar {$nomorSurat} ditolak dan dikembalikan ke draft")
+                                ->icon('heroicon-o-x-circle')
+                                ->iconColor('danger')
+                                ->sendToDatabase($creator);
+                        }
+
                         Notification::make()->title('Surat ditolak, dikembalikan ke draft')->warning()->send();
                     })
                     ->visible(
