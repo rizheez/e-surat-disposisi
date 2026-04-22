@@ -4,102 +4,128 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\Disposisi;
-use App\Models\User;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
 class DisposisiPolicy
 {
-    public function viewAny(User $user): bool
+    use HandlesAuthorization;
+    
+    public function viewAny(AuthUser $authUser): bool
     {
-        return $user->canCreateSuratKeluar();
+        return $authUser->can('ViewAny:Disposisi');
     }
 
-    public function view(User $user, Disposisi $disposisi): bool
+    public function view(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $user->isAdminRole()
-            || $this->isCreatedByUser($user, $disposisi)
-            || $this->isAssignedToUser($user, $disposisi);
+        return $this->isAdmin($authUser) || $this->isParticipant($authUser, $disposisi);
     }
 
-    /**
-     * Hanya admin dan pejabat struktural yang bisa membuat disposisi.
-     */
-    public function create(User $user): bool
+    public function create(AuthUser $authUser): bool
     {
-        return $user->canManageDisposisi();
+        return $authUser->can('Create:Disposisi');
     }
 
-    /**
-     * Admin bisa edit semua, pejabat struktural hanya disposisi yang dia buat.
-     */
-    public function update(User $user, Disposisi $disposisi): bool
+    public function update(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        if ($user->isAdminRole()) {
-            return true;
-        }
-
-        // Tembusan hanya untuk "mengetahui": tidak boleh mengubah status/proses.
-        if ($disposisi->is_tembusan) {
-            return false;
-        }
-
-        return $user->canManageDisposisi() && $disposisi->dari_user_id === $user->id;
+        return $this->isAdmin($authUser) || $this->isActiveTarget($authUser, $disposisi);
     }
 
-    /**
-     * Hanya admin yang bisa menghapus disposisi.
-     */
-    public function delete(User $user, Disposisi $disposisi): bool
+    public function delete(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $user->isAdminRole();
+        return $this->isAdmin($authUser);
     }
 
-    public function deleteAny(User $user): bool
+    public function deleteAny(AuthUser $authUser): bool
     {
-        return $user->isAdminRole();
+        return $authUser->can('DeleteAny:Disposisi');
     }
 
-    public function process(User $user, Disposisi $disposisi): bool
+    public function restore(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $disposisi->status === 'belum_diproses'
-            && ! $disposisi->is_tembusan
-            && ($user->isAdminRole() || $this->isAssignedToUser($user, $disposisi));
+        return $authUser->can('Restore:Disposisi');
     }
 
-    public function complete(User $user, Disposisi $disposisi): bool
+    public function forceDelete(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $disposisi->status === 'sedang_diproses'
-            && ! $disposisi->is_tembusan
-            && ($user->isAdminRole() || $this->isAssignedToUser($user, $disposisi));
+        return $this->isAdmin($authUser);
     }
 
-    public function forward(User $user, Disposisi $disposisi): bool
+    public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $disposisi->status !== 'selesai'
-            && ! $disposisi->is_tembusan
-            && ($user->isAdminRole() || $this->isAssignedToUser($user, $disposisi));
+        return $authUser->can('ForceDeleteAny:Disposisi');
     }
 
-    public function updateStatus(User $user, Disposisi $disposisi): bool
+    public function restoreAny(AuthUser $authUser): bool
     {
-        return ! $disposisi->is_tembusan
-            && ($user->isAdminRole() || $this->isAssignedToUser($user, $disposisi));
+        return $authUser->can('RestoreAny:Disposisi');
     }
 
-    private function isCreatedByUser(User $user, Disposisi $disposisi): bool
+    public function replicate(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return filled($disposisi->dari_user_id)
-            && (int) $disposisi->dari_user_id === (int) $user->id;
+        return $authUser->can('Replicate:Disposisi');
     }
 
-    private function isAssignedToUser(User $user, Disposisi $disposisi): bool
+    public function reorder(AuthUser $authUser): bool
     {
-        if (filled($disposisi->ke_user_id) && (int) $disposisi->ke_user_id === (int) $user->id) {
-            return true;
-        }
-
-        return filled($disposisi->ke_unit_id)
-            && filled($user->unit_kerja_id)
-            && (int) $disposisi->ke_unit_id === (int) $user->unit_kerja_id;
+        return $authUser->can('Reorder:Disposisi');
     }
+
+    public function process(AuthUser $authUser, Disposisi $disposisi): bool
+    {
+        return ($this->isAdmin($authUser) || $this->isActiveTarget($authUser, $disposisi))
+            && $disposisi->status === 'belum_diproses';
+    }
+
+    public function complete(AuthUser $authUser, Disposisi $disposisi): bool
+    {
+        return ($this->isAdmin($authUser) || $this->isActiveTarget($authUser, $disposisi))
+            && $disposisi->status !== 'selesai';
+    }
+
+    public function forward(AuthUser $authUser, Disposisi $disposisi): bool
+    {
+        return $this->isActionable($disposisi)
+            && ($this->isAdmin($authUser) || $this->isTarget($authUser, $disposisi));
+    }
+
+    public function updateStatus(AuthUser $authUser, Disposisi $disposisi): bool
+    {
+        return $this->isActionable($disposisi)
+            && ($this->isAdmin($authUser) || $this->isTarget($authUser, $disposisi));
+    }
+
+    private function isAdmin(AuthUser $authUser): bool
+    {
+        return method_exists($authUser, 'isAdminRole') && $authUser->isAdminRole();
+    }
+
+    private function isParticipant(AuthUser $authUser, Disposisi $disposisi): bool
+    {
+        return $disposisi->dari_user_id === $authUser->getKey()
+            || $this->isTarget($authUser, $disposisi);
+    }
+
+    private function isActiveTarget(AuthUser $authUser, Disposisi $disposisi): bool
+    {
+        return $this->isActionable($disposisi)
+            && $this->isTarget($authUser, $disposisi);
+    }
+
+    private function isActionable(Disposisi $disposisi): bool
+    {
+        return ! $disposisi->is_tembusan && $disposisi->status !== 'selesai';
+    }
+
+    private function isTarget(AuthUser $authUser, Disposisi $disposisi): bool
+    {
+        return $disposisi->ke_user_id === $authUser->getKey()
+            || (
+                filled($disposisi->ke_unit_id)
+                && filled($authUser->unit_kerja_id)
+                && $disposisi->ke_unit_id === $authUser->unit_kerja_id
+            );
+    }
+
 }

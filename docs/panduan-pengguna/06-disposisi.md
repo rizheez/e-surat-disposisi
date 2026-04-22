@@ -15,9 +15,9 @@ Menu Disposisi digunakan untuk mengelola tindak lanjut surat masuk. Disposisi da
 
 1. Buka menu **Surat Masuk** atau menu **Disposisi** jika tersedia aksi pembuatan.
 2. Pilih surat masuk yang akan didisposisikan.
-3. Pilih penerima:
-   - **Ke User** untuk disposisi ke orang tertentu.
-   - **Ke Unit Kerja** untuk disposisi ke satu unit.
+3. Pilih **Jenis Tujuan**:
+   - **User** untuk disposisi ke orang tertentu.
+   - **Unit Kerja** untuk disposisi ke satu unit.
 4. Isi **Instruksi**.
 5. Isi **Catatan** jika ada.
 6. Isi **Batas Waktu** jika disposisi memiliki tenggat.
@@ -35,6 +35,8 @@ Menu Disposisi digunakan untuk mengelola tindak lanjut surat masuk. Disposisi da
 1. Buka disposisi yang sedang diproses.
 2. Klik aksi **Selesai** jika instruksi sudah dilaksanakan.
 3. Status disposisi akan berubah menjadi selesai.
+4. Status surat masuk terkait juga akan berubah menjadi selesai.
+5. Disposisi lain yang masih aktif pada surat tersebut akan ikut ditandai selesai.
 
 ## Meneruskan Disposisi
 
@@ -49,4 +51,3 @@ Menu Disposisi digunakan untuk mengelola tindak lanjut surat masuk. Disposisi da
 - Pastikan instruksi disposisi jelas agar penerima memahami tindak lanjut yang harus dilakukan.
 - Gunakan batas waktu untuk disposisi yang perlu diprioritaskan.
 - Jika menerima disposisi, pengguna juga dapat melihat surat masuk yang menjadi dasar disposisi tersebut.
-

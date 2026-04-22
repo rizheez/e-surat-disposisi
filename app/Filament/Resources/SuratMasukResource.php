@@ -11,6 +11,8 @@ use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -48,7 +50,7 @@ class SuratMasukResource extends Resource
                             ->maxLength(50)
                             ->label('Nomor Agenda')
                             ->helperText('Otomatis jika kosong')
-                            ->disabled(fn (string $operation): bool => $operation === 'edit'),
+                            ->disabled(fn(string $operation): bool => $operation === 'edit'),
                         Forms\Components\DatePicker::make('tanggal_surat')
                             ->required()
                             ->label('Tanggal Surat')
@@ -155,18 +157,18 @@ class SuratMasukResource extends Resource
                     ->label('Perihal')
                     ->searchable()
                     ->limit(40)
-                    ->tooltip(fn ($record) => $record->perihal),
+                    ->tooltip(fn($record) => $record->perihal),
                 Tables\Columns\TextColumn::make('sifat_surat')
                     ->label('Sifat')
                     ->badge()
-                    ->color(fn (?string $state): string => match ($state) {
+                    ->color(fn(?string $state): string => match ($state) {
                         'biasa' => 'gray',
                         'penting' => 'warning',
                         'rahasia' => 'danger',
                         'sangat_rahasia' => 'danger',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                    ->formatStateUsing(fn(?string $state): string => match ($state) {
                         'biasa' => 'Biasa',
                         'penting' => 'Penting',
                         'rahasia' => 'Rahasia',
@@ -176,14 +178,14 @@ class SuratMasukResource extends Resource
                 Tables\Columns\TextColumn::make('prioritas')
                     ->label('Prioritas')
                     ->badge()
-                    ->color(fn (?string $state): string => match ($state) {
+                    ->color(fn(?string $state): string => match ($state) {
                         'rendah' => 'gray',
                         'sedang' => 'info',
                         'tinggi' => 'warning',
                         'segera' => 'danger',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                    ->formatStateUsing(fn(?string $state): string => match ($state) {
                         'rendah' => 'Rendah',
                         'sedang' => 'Sedang',
                         'tinggi' => 'Tinggi',
@@ -198,14 +200,14 @@ class SuratMasukResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         'diterima' => 'gray',
                         'dibaca' => 'info',
                         'didisposisi' => 'warning',
                         'selesai' => 'success',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
                         'diterima' => 'Diterima',
                         'dibaca' => 'Dibaca',
                         'didisposisi' => 'Didisposisi',
@@ -254,27 +256,46 @@ class SuratMasukResource extends Resource
                     ->icon('heroicon-o-paper-airplane')
                     ->color('warning')
                     ->modalHeading('Buat Disposisi')
-                    ->modalDescription(fn ($record) => "Surat: {$record->nomor_surat} - {$record->perihal}")
+                    ->modalDescription(fn($record) => "Surat: {$record->nomor_surat} - {$record->perihal}")
                     ->form([
+                        Forms\Components\Radio::make('tujuan_tipe')
+                            ->label('Jenis Tujuan')
+                            ->options([
+                                'user' => 'User',
+                                'unit' => 'Unit Kerja',
+                            ])
+                            ->default('user')
+                            ->required()
+                            ->live()
+                            ->dehydrated(false)
+                            ->inline()
+                            ->afterStateUpdated(function (Set $set): void {
+                                $set('ke_user_id', null);
+                                $set('ke_unit_id', null);
+                            }),
                         Forms\Components\Select::make('ke_user_id')
-                            ->label('Tujuan (User)')
-                            ->options(fn () => \App\Models\User::pluck('name', 'id'))
+                            ->label('Tujuan User')
+                            ->options(fn() => \App\Models\User::pluck('name', 'id'))
                             ->searchable()
                             ->preload()
-                            ->helperText('Pilih user tujuan disposisi'),
+                            ->helperText('Pilih user tujuan disposisi')
+                            ->visible(fn (Get $get): bool => $get('tujuan_tipe') === 'user')
+                            ->required(fn (Get $get): bool => $get('tujuan_tipe') === 'user'),
                         Forms\Components\Select::make('ke_unit_id')
-                            ->label('Tujuan (Unit Kerja)')
-                            ->options(fn () => \App\Models\UnitKerja::pluck('nama', 'id'))
+                            ->label('Tujuan Unit Kerja')
+                            ->options(fn() => \App\Models\UnitKerja::pluck('nama', 'id'))
                             ->searchable()
                             ->preload()
-                            ->helperText('Atau pilih unit kerja tujuan'),
-                        Forms\Components\Select::make('tembusan_user_ids')
-                            ->label('Tembusan (Opsional)')
-                            ->options(fn () => \App\Models\User::pluck('name', 'id'))
-                            ->multiple()
-                            ->searchable()
-                            ->preload()
-                            ->helperText('Pilih user untuk tembusan (hanya mengetahui)'),
+                            ->helperText('Pilih unit kerja tujuan disposisi')
+                            ->visible(fn (Get $get): bool => $get('tujuan_tipe') === 'unit')
+                            ->required(fn (Get $get): bool => $get('tujuan_tipe') === 'unit'),
+                        // Forms\Components\Select::make('tembusan_user_ids')
+                        //     ->label('Tembusan (Opsional)')
+                        //     ->options(fn () => \App\Models\User::pluck('name', 'id'))
+                        //     ->multiple()
+                        //     ->searchable()
+                        //     ->preload()
+                        //     ->helperText('Pilih user untuk tembusan (hanya mengetahui)'),
                         Forms\Components\Textarea::make('instruksi')
                             ->required()
                             ->label('Instruksi')
@@ -320,7 +341,7 @@ class SuratMasukResource extends Resource
                                     'dari_user_id' => Auth::id(),
                                     'ke_user_id' => $userId,
                                     'ke_unit_id' => null,
-                                    'instruksi' => 'Mengetahui (Tembusan). Instruksi utama: '.$data['instruksi'],
+                                    'instruksi' => 'Mengetahui (Tembusan). Instruksi utama: ' . $data['instruksi'],
                                     'status' => 'selesai',
                                     'is_tembusan' => true,
                                 ]);

@@ -121,11 +121,34 @@ class Disposisi extends Model
      */
     protected static function booted(): void
     {
+        static::saving(function (Disposisi $disposisi) {
+            if (filled($disposisi->ke_user_id) && filled($disposisi->ke_unit_id)) {
+                $disposisi->ke_unit_id = null;
+            }
+        });
+
         static::created(function (Disposisi $disposisi) {
             $suratMasuk = $disposisi->suratMasuk;
             if ($suratMasuk && $suratMasuk->status !== 'selesai') {
                 $suratMasuk->update(['status' => 'didisposisi']);
             }
+        });
+
+        static::updated(function (Disposisi $disposisi) {
+            if (! $disposisi->wasChanged('status') || $disposisi->status !== 'selesai' || $disposisi->is_tembusan) {
+                return;
+            }
+
+            $suratMasuk = $disposisi->suratMasuk;
+            if (! $suratMasuk || $suratMasuk->status === 'selesai') {
+                return;
+            }
+
+            $suratMasuk->update(['status' => 'selesai']);
+
+            $suratMasuk->disposisis()
+                ->where('status', '!=', 'selesai')
+                ->update(['status' => 'selesai']);
         });
     }
 }

@@ -4,102 +4,72 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\SuratMasuk;
-use App\Models\User;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
 class SuratMasukPolicy
 {
-    /**
-     * Admin, pejabat struktural, dan staf administrasi bisa melihat daftar surat masuk.
-     */
-    public function viewAny(User $user): bool
+    use HandlesAuthorization;
+    
+    public function viewAny(AuthUser $authUser): bool
     {
-        return $user->canManageSuratMasuk() || $user->canManageDisposisi();
+        return $authUser->can('ViewAny:SuratMasuk');
     }
 
-    /**
-     * Admin, pejabat struktural, dan staf administrasi bisa melihat detail surat masuk.
-     */
-    public function view(User $user, SuratMasuk $suratMasuk): bool
+    public function view(AuthUser $authUser, SuratMasuk $suratMasuk): bool
     {
-        if ($user->canManageSuratMasuk()) {
-            return true;
-        }
-
-        return $this->isRelevantToUser($user, $suratMasuk);
+        return $authUser->can('View:SuratMasuk');
     }
 
-    /**
-     * Admin dan staf administrasi bisa membuat surat masuk.
-     */
-    public function create(User $user): bool
+    public function create(AuthUser $authUser): bool
     {
-        return $user->canManageSuratMasuk();
+        return $authUser->can('Create:SuratMasuk');
     }
 
-    /**
-     * Admin dan staf administrasi bisa mengedit surat masuk.
-     */
-    public function update(User $user, SuratMasuk $suratMasuk): bool
+    public function update(AuthUser $authUser, SuratMasuk $suratMasuk): bool
     {
-        return $user->canManageSuratMasuk();
+        return $authUser->can('Update:SuratMasuk');
     }
 
-    /**
-     * Admin dan staf administrasi bisa menghapus surat masuk.
-     */
-    public function delete(User $user, SuratMasuk $suratMasuk): bool
+    public function delete(AuthUser $authUser, SuratMasuk $suratMasuk): bool
     {
-        return $user->canManageSuratMasuk();
+        return $authUser->can('Delete:SuratMasuk');
     }
 
-    public function deleteAny(User $user): bool
+    public function deleteAny(AuthUser $authUser): bool
     {
-        return $user->canManageSuratMasuk();
+        return $authUser->can('DeleteAny:SuratMasuk');
     }
 
-    /**
-     * Hanya admin yang bisa restore surat masuk yang dihapus.
-     */
-    public function restore(User $user, SuratMasuk $suratMasuk): bool
+    public function restore(AuthUser $authUser, SuratMasuk $suratMasuk): bool
     {
-        return $user->isAdminRole();
+        return $authUser->can('Restore:SuratMasuk');
     }
 
-    public function restoreAny(User $user): bool
+    public function forceDelete(AuthUser $authUser, SuratMasuk $suratMasuk): bool
     {
-        return $user->isAdminRole();
+        return $authUser->can('ForceDelete:SuratMasuk');
     }
 
-    /**
-     * Hanya admin yang bisa force delete.
-     */
-    public function forceDelete(User $user, SuratMasuk $suratMasuk): bool
+    public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $user->isAdminRole();
+        return $authUser->can('ForceDeleteAny:SuratMasuk');
     }
 
-    public function forceDeleteAny(User $user): bool
+    public function restoreAny(AuthUser $authUser): bool
     {
-        return $user->isAdminRole();
+        return $authUser->can('RestoreAny:SuratMasuk');
     }
 
-    private function isRelevantToUser(User $user, SuratMasuk $suratMasuk): bool
+    public function replicate(AuthUser $authUser, SuratMasuk $suratMasuk): bool
     {
-        if (filled($suratMasuk->penerima) && (int) $suratMasuk->penerima === (int) $user->id) {
-            return true;
-        }
-
-        $unitId = $user->unit_kerja_id;
-
-        return $suratMasuk->disposisis()
-            ->where(function ($query) use ($user, $unitId): void {
-                $query->where('ke_user_id', $user->id);
-
-                if (filled($unitId)) {
-                    $query->orWhere('ke_unit_id', $unitId);
-                }
-            })
-            ->exists();
+        return $authUser->can('Replicate:SuratMasuk');
     }
+
+    public function reorder(AuthUser $authUser): bool
+    {
+        return $authUser->can('Reorder:SuratMasuk');
+    }
+
 }

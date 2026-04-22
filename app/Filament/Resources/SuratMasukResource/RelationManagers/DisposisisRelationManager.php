@@ -8,6 +8,8 @@ use App\Models\Disposisi;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -26,16 +28,58 @@ class DisposisisRelationManager extends RelationManager
     {
         return $form
             ->schema([
+                Forms\Components\Radio::make('tujuan_tipe')
+                    ->label('Jenis Tujuan')
+                    ->options([
+                        'user' => 'User',
+                        'unit' => 'Unit Kerja',
+                    ])
+                    ->default(fn (?Disposisi $record): string => blank($record?->ke_user_id) && filled($record?->ke_unit_id) ? 'unit' : 'user')
+                    ->required()
+                    ->live()
+                    ->dehydrated(false)
+                    ->inline()
+                    ->afterStateHydrated(function (Set $set, ?Disposisi $record): void {
+                        if (! $record) {
+                            return;
+                        }
+
+                        if (filled($record->ke_user_id)) {
+                            $set('tujuan_tipe', 'user');
+                            $set('ke_unit_id', null);
+
+                            return;
+                        }
+
+                        if (filled($record->ke_unit_id)) {
+                            $set('tujuan_tipe', 'unit');
+                            $set('ke_user_id', null);
+
+                            return;
+                        }
+
+                        $set('tujuan_tipe', 'user');
+                    })
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('ke_user_id', null);
+                        $set('ke_unit_id', null);
+                    }),
                 Forms\Components\Select::make('ke_user_id')
-                    ->label('Tujuan (User)')
+                    ->label('Tujuan User')
                     ->options(fn () => \App\Models\User::pluck('name', 'id'))
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->visible(fn (Get $get): bool => $get('tujuan_tipe') === 'user')
+                    ->required(fn (Get $get): bool => $get('tujuan_tipe') === 'user')
+                    ->dehydratedWhenHidden(),
                 Forms\Components\Select::make('ke_unit_id')
-                    ->label('Tujuan (Unit Kerja)')
+                    ->label('Tujuan Unit Kerja')
                     ->options(fn () => \App\Models\UnitKerja::pluck('nama', 'id'))
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->visible(fn (Get $get): bool => $get('tujuan_tipe') === 'unit')
+                    ->required(fn (Get $get): bool => $get('tujuan_tipe') === 'unit')
+                    ->dehydratedWhenHidden(),
                 Forms\Components\Select::make('tembusan_user_ids')
                     ->label('Tembusan (Opsional)')
                     ->options(fn () => \App\Models\User::pluck('name', 'id'))

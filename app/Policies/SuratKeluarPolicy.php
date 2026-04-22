@@ -4,137 +4,72 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\SuratKeluar;
-use App\Models\User;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
 class SuratKeluarPolicy
 {
-    /**
-     * Semua user panel bisa melihat daftar surat keluar.
-     */
-    public function viewAny(User $user): bool
+    use HandlesAuthorization;
+    
+    public function viewAny(AuthUser $authUser): bool
     {
-        return $user->canCreateSuratKeluar();
+        return $authUser->can('ViewAny:SuratKeluar');
     }
 
-    public function view(User $user, SuratKeluar $suratKeluar): bool
+    public function view(AuthUser $authUser, SuratKeluar $suratKeluar): bool
     {
-        return $user->isAdminRole()
-            || $this->isOwnedByUser($user, $suratKeluar)
-            || $this->isSignedByUser($user, $suratKeluar);
+        return $authUser->can('View:SuratKeluar');
     }
 
-    /**
-     * Semua user panel bisa membuat surat keluar.
-     */
-    public function create(User $user): bool
+    public function create(AuthUser $authUser): bool
     {
-        return $user->canCreateSuratKeluar();
+        return $authUser->can('Create:SuratKeluar');
     }
 
-    /**
-     * Admin bisa edit semua, user lain hanya surat draft yang dia buat.
-     */
-    public function update(User $user, SuratKeluar $suratKeluar): bool
+    public function update(AuthUser $authUser, SuratKeluar $suratKeluar): bool
     {
-        if ($user->isAdminRole()) {
-            return true;
-        }
-
-        return $this->isDraftOwnedByUser($user, $suratKeluar);
+        return $authUser->can('Update:SuratKeluar');
     }
 
-    /**
-     * Admin bisa menghapus semua, user lain hanya surat draft yang dia buat.
-     */
-    public function delete(User $user, SuratKeluar $suratKeluar): bool
+    public function delete(AuthUser $authUser, SuratKeluar $suratKeluar): bool
     {
-        if ($user->isAdminRole()) {
-            return true;
-        }
-
-        return $this->isDraftOwnedByUser($user, $suratKeluar);
+        return $authUser->can('Delete:SuratKeluar');
     }
 
-    public function deleteAny(User $user): bool
+    public function deleteAny(AuthUser $authUser): bool
     {
-        return $user->canCreateSuratKeluar();
+        return $authUser->can('DeleteAny:SuratKeluar');
     }
 
-    /**
-     * Admin bisa submit semua draft, user lain hanya draft yang dia buat.
-     */
-    public function submitReview(User $user, SuratKeluar $suratKeluar): bool
+    public function restore(AuthUser $authUser, SuratKeluar $suratKeluar): bool
     {
-        if ($suratKeluar->status !== 'draft' || filled($suratKeluar->file_path)) {
-            return false;
-        }
-
-        return $user->isAdminRole() || $this->isOwnedByUser($user, $suratKeluar);
+        return $authUser->can('Restore:SuratKeluar');
     }
 
-    /**
-     * Admin bisa kirim semua surat approved, user lain hanya surat yang dia buat.
-     */
-    public function kirim(User $user, SuratKeluar $suratKeluar): bool
+    public function forceDelete(AuthUser $authUser, SuratKeluar $suratKeluar): bool
     {
-        if ($suratKeluar->status !== 'approved') {
-            return false;
-        }
-
-        return $user->isAdminRole() || $this->isOwnedByUser($user, $suratKeluar);
+        return $authUser->can('ForceDelete:SuratKeluar');
     }
 
-    /**
-     * Hanya admin yang bisa restore surat keluar yang dihapus.
-     */
-    public function restore(User $user, SuratKeluar $suratKeluar): bool
+    public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $user->isAdminRole();
+        return $authUser->can('ForceDeleteAny:SuratKeluar');
     }
 
-    /**
-     * Hanya admin yang bisa force delete.
-     */
-    public function forceDelete(User $user, SuratKeluar $suratKeluar): bool
+    public function restoreAny(AuthUser $authUser): bool
     {
-        return $user->isAdminRole();
+        return $authUser->can('RestoreAny:SuratKeluar');
     }
 
-    /**
-     * Hanya penandatangan surat yang bisa menyetujui.
-     */
-    public function approve(User $user, SuratKeluar $suratKeluar): bool
+    public function replicate(AuthUser $authUser, SuratKeluar $suratKeluar): bool
     {
-        return $suratKeluar->penandatangan_id === $user->id
-            && $suratKeluar->status === 'review';
+        return $authUser->can('Replicate:SuratKeluar');
     }
 
-    /**
-     * Hanya penandatangan surat yang bisa menolak.
-     */
-    public function reject(User $user, SuratKeluar $suratKeluar): bool
+    public function reorder(AuthUser $authUser): bool
     {
-        return $suratKeluar->penandatangan_id === $user->id
-            && $suratKeluar->status === 'review';
+        return $authUser->can('Reorder:SuratKeluar');
     }
 
-    private function isDraftOwnedByUser(User $user, SuratKeluar $suratKeluar): bool
-    {
-        return $user->canCreateSuratKeluar()
-            && $suratKeluar->status === 'draft'
-            && $this->isOwnedByUser($user, $suratKeluar);
-    }
-
-    private function isOwnedByUser(User $user, SuratKeluar $suratKeluar): bool
-    {
-        return filled($suratKeluar->pembuat_id)
-            && (int) $suratKeluar->pembuat_id === (int) $user->id;
-    }
-
-    private function isSignedByUser(User $user, SuratKeluar $suratKeluar): bool
-    {
-        return filled($suratKeluar->penandatangan_id)
-            && (int) $suratKeluar->penandatangan_id === (int) $user->id;
-    }
 }
