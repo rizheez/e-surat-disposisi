@@ -22,7 +22,7 @@ class DisposisiResource extends Resource
 {
     protected static ?string $model = Disposisi::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-paper-airplane';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrow-path-rounded-square';
 
     protected static string|UnitEnum|null $navigationGroup = 'Persuratan';
 
