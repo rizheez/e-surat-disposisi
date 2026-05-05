@@ -15,6 +15,11 @@ class ActivityLogWidget extends BaseWidget
 
     protected static ?string $heading = 'Log Aktivitas Terbaru';
 
+    public static function canView(): bool
+    {
+        return auth()->user()?->isAdminRole() ?? false;
+    }
+
     public function table(Table $table): Table
     {
         return $table
