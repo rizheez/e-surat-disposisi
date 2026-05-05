@@ -6,13 +6,12 @@ use App\Filament\Resources\SuratMasukResource\Pages;
 use App\Filament\Resources\SuratMasukResource\RelationManagers;
 use App\Models\Disposisi;
 use App\Models\SuratMasuk;
+use App\Models\User;
 use BackedEnum;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -258,44 +257,20 @@ class SuratMasukResource extends Resource
                     ->modalHeading('Buat Disposisi')
                     ->modalDescription(fn($record) => "Surat: {$record->nomor_surat} - {$record->perihal}")
                     ->form([
-                        Forms\Components\Radio::make('tujuan_tipe')
-                            ->label('Jenis Tujuan')
-                            ->options([
-                                'user' => 'User',
-                                'unit' => 'Unit Kerja',
-                            ])
-                            ->default('user')
-                            ->required()
-                            ->live()
-                            ->dehydrated(false)
-                            ->inline()
-                            ->afterStateUpdated(function (Set $set): void {
-                                $set('ke_user_id', null);
-                                $set('ke_unit_id', null);
-                            }),
                         Forms\Components\Select::make('ke_user_id')
                             ->label('Tujuan User')
                             ->options(fn() => \App\Models\User::pluck('name', 'id'))
                             ->searchable()
                             ->preload()
                             ->helperText('Pilih user tujuan disposisi')
-                            ->visible(fn (Get $get): bool => $get('tujuan_tipe') === 'user')
-                            ->required(fn (Get $get): bool => $get('tujuan_tipe') === 'user'),
-                        Forms\Components\Select::make('ke_unit_id')
-                            ->label('Tujuan Unit Kerja')
-                            ->options(fn() => \App\Models\UnitKerja::pluck('nama', 'id'))
+                            ->required(),
+                        Forms\Components\Select::make('tembusan_user_ids')
+                            ->label('Tembusan (Opsional)')
+                            ->options(fn () => \App\Models\User::pluck('name', 'id'))
+                            ->multiple()
                             ->searchable()
                             ->preload()
-                            ->helperText('Pilih unit kerja tujuan disposisi')
-                            ->visible(fn (Get $get): bool => $get('tujuan_tipe') === 'unit')
-                            ->required(fn (Get $get): bool => $get('tujuan_tipe') === 'unit'),
-                        // Forms\Components\Select::make('tembusan_user_ids')
-                        //     ->label('Tembusan (Opsional)')
-                        //     ->options(fn () => \App\Models\User::pluck('name', 'id'))
-                        //     ->multiple()
-                        //     ->searchable()
-                        //     ->preload()
-                        //     ->helperText('Pilih user untuk tembusan (hanya mengetahui)'),
+                            ->helperText('Pilih user untuk tembusan (hanya mengetahui)'),
                         Forms\Components\Textarea::make('instruksi')
                             ->required()
                             ->label('Instruksi')
@@ -310,14 +285,14 @@ class SuratMasukResource extends Resource
                             'surat_masuk_id' => $record->id,
                             'dari_user_id' => Auth::id(),
                             'ke_user_id' => $data['ke_user_id'] ?? null,
-                            'ke_unit_id' => $data['ke_unit_id'] ?? null,
+                            'ke_unit_id' => null,
                             'instruksi' => $data['instruksi'],
                             'batas_waktu' => $data['batas_waktu'] ?? null,
                             'status' => 'belum_diproses',
                         ]);
 
                         if ($disposisi->ke_user_id) {
-                            $targetUser = \App\Models\User::find($disposisi->ke_user_id);
+                            $targetUser = User::find($disposisi->ke_user_id);
                             if ($targetUser) {
                                 Notification::make()
                                     ->title('Disposisi Baru')
@@ -341,7 +316,7 @@ class SuratMasukResource extends Resource
                                     'is_tembusan' => true,
                                 ]);
 
-                                $tempUser = \App\Models\User::find($userId);
+                                $tempUser = User::find($userId);
                                 if ($tempUser) {
                                     Notification::make()
                                         ->title('Tembusan Disposisi')
@@ -378,17 +353,10 @@ class SuratMasukResource extends Resource
                         }
 
                         // Hanya yang punya disposisi "tindak lanjut" (bukan tembusan) yang bisa membuat disposisi lanjut.
-                        $unitId = $user->unit_kerja_id;
-
                         return $record->disposisis()
                             ->where('is_tembusan', false)
                             ->where('status', '!=', 'selesai')
-                            ->where(function (Builder $q) use ($user, $unitId) {
-                                $q->where('ke_user_id', $user->id);
-                                if (! empty($unitId)) {
-                                    $q->orWhere('ke_unit_id', $unitId);
-                                }
-                            })
+                            ->where('ke_user_id', $user->id)
                             ->exists();
                     }),
                 \Filament\Actions\Action::make('tandaSelesai')
@@ -441,17 +409,10 @@ class SuratMasukResource extends Resource
                             return false;
                         }
 
-                        $unitId = $user->unit_kerja_id;
-
                         return $record->disposisis()
                             ->where('is_tembusan', false)
                             ->where('status', '!=', 'selesai')
-                            ->where(function (Builder $q) use ($user, $unitId) {
-                                $q->where('ke_user_id', $user->id);
-                                if (! empty($unitId)) {
-                                    $q->orWhere('ke_unit_id', $unitId);
-                                }
-                            })
+                            ->where('ke_user_id', $user->id)
                             ->exists();
                     }),
                 \Filament\Actions\Action::make('arsipkan')
@@ -484,16 +445,9 @@ class SuratMasukResource extends Resource
                         }
 
                         // Hanya eksekutor yang berhak mengarsipkan.
-                        $unitId = $user->unit_kerja_id;
-
                         return $record->disposisis()
                             ->where('is_tembusan', false)
-                            ->where(function (Builder $q) use ($user, $unitId) {
-                                $q->where('ke_user_id', $user->id);
-                                if (! empty($unitId)) {
-                                    $q->orWhere('ke_unit_id', $unitId);
-                                }
-                            })
+                            ->where('ke_user_id', $user->id)
                             ->exists();
                     }),
                 \Filament\Actions\Action::make('lihatFile')
@@ -547,18 +501,11 @@ class SuratMasukResource extends Resource
             return $query;
         }
 
-        // Untuk pejabat struktural: hanya surat yang relevan (jadi penerima disposisi atau tembusan).
-        $unitId = $user->unit_kerja_id;
-
-        return $query->where(function (Builder $q) use ($user, $unitId) {
+        // Untuk pejabat struktural: hanya surat yang relevan (jadi penerima surat, disposisi, atau tembusan).
+        return $query->where(function (Builder $q) use ($user) {
             $q->where('penerima', $user->id)
                 ->orWhereHas('disposisis', function (Builder $d) use ($user) {
                     $d->where('ke_user_id', $user->id);
-                })
-                ->when(! empty($unitId), function (Builder $d) use ($unitId) {
-                    $d->orWhereHas('disposisis', function (Builder $dx) use ($unitId) {
-                        $dx->where('ke_unit_id', $unitId);
-                    });
                 });
         });
     }

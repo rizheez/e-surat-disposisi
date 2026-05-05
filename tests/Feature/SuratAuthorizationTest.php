@@ -95,7 +95,7 @@ class SuratAuthorizationTest extends TestCase
         $this->assertFalse(Gate::forUser($outsider)->allows('view', $suratMasuk));
     }
 
-    public function test_disposisi_can_be_seen_by_creator_user_target_and_unit_target_only(): void
+    public function test_disposisi_can_be_seen_by_creator_and_user_target_only(): void
     {
         $unit = UnitKerja::query()->create([
             'nama' => 'Akademik',
@@ -119,7 +119,7 @@ class SuratAuthorizationTest extends TestCase
 
         $this->assertTrue(Gate::forUser($disposisiCreator)->allows('view', $disposisi));
         $this->assertTrue(Gate::forUser($target)->allows('view', $disposisi));
-        $this->assertTrue(Gate::forUser($unitMember)->allows('view', $disposisi));
+        $this->assertFalse(Gate::forUser($unitMember)->allows('view', $disposisi));
         $this->assertFalse(Gate::forUser($outsider)->allows('view', $disposisi));
     }
 

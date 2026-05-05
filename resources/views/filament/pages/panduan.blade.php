@@ -26,7 +26,7 @@
             <x-slot name="heading">Daftar Menu</x-slot>
 
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach (['Dasbor', 'Surat Masuk', 'Surat Keluar', 'Generate Nomor', 'Arsip Surat', 'Disposisi', 'Unit Kerja', 'Klasifikasi Surat', 'Pengguna', 'Role Management', 'Template Surat'] as $menu)
+                @foreach (['Dasbor', 'Surat Masuk', 'Surat Keluar', 'Generate Nomor', 'Arsip Surat', 'Disposisi', 'Unit Kerja', 'Klasifikasi Surat', 'Pengguna', 'Role Management'] as $menu)
                     <div class="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800">
                         {{ $menu }}
                     </div>
@@ -217,7 +217,7 @@
                     <ul class="mt-2 list-disc space-y-1 pl-5">
                         <li>Admin dapat melihat semua disposisi.</li>
                         <li>Pengguna dapat melihat disposisi jika dirinya pembuat atau penerima disposisi.</li>
-                        <li>Pengguna dapat melihat disposisi jika unit kerjanya menjadi penerima disposisi.</li>
+                        <li>Pengguna juga dapat melihat disposisi jika menjadi tembusan.</li>
                     </ul>
                 </div>
 
@@ -225,8 +225,8 @@
                     <h3 class="font-semibold text-gray-950">Alur kerja</h3>
                     <ol class="mt-2 list-decimal space-y-2 pl-5">
                         <li>Buat disposisi dari Surat Masuk atau menu Disposisi.</li>
-                        <li>Pilih <strong>Jenis Tujuan</strong>: User atau Unit Kerja.</li>
-                        <li>Pilih user tujuan atau unit kerja tujuan sesuai jenis yang dipilih.</li>
+                        <li>Pilih user tujuan sebagai penanggung jawab disposisi.</li>
+                        <li>Tambahkan tembusan jika ada pengguna lain yang perlu mengetahui disposisi.</li>
                         <li>Isi instruksi dan batas waktu bila ada.</li>
                         <li>Klik <strong>Proses</strong> saat disposisi mulai dikerjakan.</li>
                         <li>Klik <strong>Selesai</strong> jika instruksi sudah dilaksanakan, lalu isi catatan penyelesaian.</li>
@@ -312,28 +312,5 @@
                 </div>
             </x-filament::section>
         </div>
-
-        {{-- <x-filament::section>
-            <x-slot name="heading">Template Surat</x-slot>
-
-            <div class="space-y-4 text-sm leading-6 text-gray-700">
-                <p>
-                    Menu Template Surat digunakan untuk menyimpan format isi surat yang sering dipakai agar pembuatan
-                    surat lebih cepat dan konsisten.
-                </p>
-                <ol class="list-decimal space-y-2 pl-5">
-                    <li>Buka menu <strong>Template Surat</strong>, lalu klik <strong>Buat</strong>.</li>
-                    <li>Isi nama template.</li>
-                    <li>Pilih unit kerja jika template hanya digunakan oleh unit tertentu.</li>
-                    <li>Isi template menggunakan rich editor, lalu simpan.</li>
-                    <li>Untuk memperbarui template, pilih data lalu klik <strong>Edit</strong>.</li>
-                    <li>Hapus template hanya jika sudah tidak digunakan lagi.</li>
-                </ol>
-                <p>
-                    Gunakan nama template yang jelas dan placeholder seperti "(Nama)", "(Tanggal)", atau "(Perihal)"
-                    jika isi perlu diganti pengguna saat dipakai.
-                </p>
-            </div>
-        </x-filament::section> --}}
     </div>
 </x-filament-panels::page>

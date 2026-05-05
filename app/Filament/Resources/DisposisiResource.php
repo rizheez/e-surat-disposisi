@@ -5,12 +5,11 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\DisposisiResource\Pages;
 use App\Filament\Resources\DisposisiResource\RelationManagers;
 use App\Models\Disposisi;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -34,6 +33,11 @@ class DisposisiResource extends Resource
 
     protected static ?int $navigationSort = 3;
 
+    public static function getSuratMasukUrl(Disposisi $record): string
+    {
+        return SuratMasukResource::getUrl('view', ['record' => $record->surat_masuk_id]);
+    }
+
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
@@ -47,15 +51,10 @@ class DisposisiResource extends Resource
             return $query;
         }
 
-        $unitId = $user->unit_kerja_id;
-
-        return $query->where(function (Builder $query) use ($user, $unitId): void {
+        return $query->where(function (Builder $query) use ($user): void {
             $query
                 ->where('dari_user_id', $user->id)
-                ->orWhere('ke_user_id', $user->id)
-                ->when(filled($unitId), function (Builder $query) use ($unitId): void {
-                    $query->orWhere('ke_unit_id', $unitId);
-                });
+                ->orWhere('ke_user_id', $user->id);
         });
     }
 
@@ -72,58 +71,12 @@ class DisposisiResource extends Resource
                             ->searchable()
                             ->preload()
                             ->label('Surat Masuk'),
-                        Forms\Components\Radio::make('tujuan_tipe')
-                            ->label('Jenis Tujuan')
-                            ->options([
-                                'user' => 'User',
-                                'unit' => 'Unit Kerja',
-                            ])
-                            ->default(fn (?Disposisi $record): string => blank($record?->ke_user_id) && filled($record?->ke_unit_id) ? 'unit' : 'user')
-                            ->required()
-                            ->live()
-                            ->dehydrated(false)
-                            ->inline()
-                            ->afterStateHydrated(function (Set $set, ?Disposisi $record): void {
-                                if (! $record) {
-                                    return;
-                                }
-
-                                if (filled($record->ke_user_id)) {
-                                    $set('tujuan_tipe', 'user');
-                                    $set('ke_unit_id', null);
-
-                                    return;
-                                }
-
-                                if (filled($record->ke_unit_id)) {
-                                    $set('tujuan_tipe', 'unit');
-                                    $set('ke_user_id', null);
-
-                                    return;
-                                }
-
-                                $set('tujuan_tipe', 'user');
-                            })
-                            ->afterStateUpdated(function (Set $set): void {
-                                $set('ke_user_id', null);
-                                $set('ke_unit_id', null);
-                            }),
                         Forms\Components\Select::make('ke_user_id')
                             ->label('Tujuan User')
-                            ->options(fn () => \App\Models\User::pluck('name', 'id'))
+                            ->options(fn () => User::pluck('name', 'id'))
                             ->searchable()
                             ->preload()
-                            ->visible(fn (Get $get): bool => $get('tujuan_tipe') === 'user')
-                            ->required(fn (Get $get): bool => $get('tujuan_tipe') === 'user')
-                            ->dehydratedWhenHidden(),
-                        Forms\Components\Select::make('ke_unit_id')
-                            ->label('Tujuan Unit Kerja')
-                            ->options(fn () => \App\Models\UnitKerja::pluck('nama', 'id'))
-                            ->searchable()
-                            ->preload()
-                            ->visible(fn (Get $get): bool => $get('tujuan_tipe') === 'unit')
-                            ->required(fn (Get $get): bool => $get('tujuan_tipe') === 'unit')
-                            ->dehydratedWhenHidden(),
+                            ->required(),
                         Forms\Components\Select::make('status')
                             ->options([
                                 'belum_diproses' => 'Belum Diproses',
@@ -182,10 +135,6 @@ class DisposisiResource extends Resource
                     ->label('Kepada')
                     ->default('-')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('keUnit.nama')
-                    ->label('Unit Tujuan')
-                    ->default('-')
-                    ->toggleable(),
                 Tables\Columns\TextColumn::make('instruksi')
                     ->label('Instruksi')
                     ->limit(35)
@@ -295,35 +244,18 @@ class DisposisiResource extends Resource
                     ->authorize('forward')
                     ->modalHeading('Teruskan Disposisi')
                     ->form([
-                        Forms\Components\Radio::make('tujuan_tipe')
-                            ->label('Jenis Tujuan')
-                            ->options([
-                                'user' => 'User',
-                                'unit' => 'Unit Kerja',
-                            ])
-                            ->default('user')
-                            ->required()
-                            ->live()
-                            ->dehydrated(false)
-                            ->inline()
-                            ->afterStateUpdated(function (Set $set): void {
-                                $set('ke_user_id', null);
-                                $set('ke_unit_id', null);
-                            }),
                         Forms\Components\Select::make('ke_user_id')
                             ->label('Tujuan User')
-                            ->options(fn () => \App\Models\User::pluck('name', 'id'))
+                            ->options(fn () => User::pluck('name', 'id'))
                             ->searchable()
                             ->preload()
-                            ->visible(fn (Get $get): bool => $get('tujuan_tipe') === 'user')
-                            ->required(fn (Get $get): bool => $get('tujuan_tipe') === 'user'),
-                        Forms\Components\Select::make('ke_unit_id')
-                            ->label('Tujuan Unit Kerja')
-                            ->options(fn () => \App\Models\UnitKerja::pluck('nama', 'id'))
+                            ->required(),
+                        Forms\Components\Select::make('tembusan_user_ids')
+                            ->label('Tembusan (Opsional)')
+                            ->options(fn () => User::pluck('name', 'id'))
+                            ->multiple()
                             ->searchable()
-                            ->preload()
-                            ->visible(fn (Get $get): bool => $get('tujuan_tipe') === 'unit')
-                            ->required(fn (Get $get): bool => $get('tujuan_tipe') === 'unit'),
+                            ->preload(),
                         Forms\Components\Textarea::make('instruksi')
                             ->required()
                             ->label('Instruksi')
@@ -336,7 +268,7 @@ class DisposisiResource extends Resource
                             'surat_masuk_id' => $record->surat_masuk_id,
                             'dari_user_id' => \Illuminate\Support\Facades\Auth::id(),
                             'ke_user_id' => $data['ke_user_id'] ?? null,
-                            'ke_unit_id' => $data['ke_unit_id'] ?? null,
+                            'ke_unit_id' => null,
                             'instruksi' => $data['instruksi'],
                             'batas_waktu' => $data['batas_waktu'] ?? null,
                             'status' => 'belum_diproses',
@@ -348,7 +280,7 @@ class DisposisiResource extends Resource
                         }
 
                         if ($newDisposisi->ke_user_id) {
-                            $targetUser = \App\Models\User::find($newDisposisi->ke_user_id);
+                            $targetUser = User::find($newDisposisi->ke_user_id);
                             if ($targetUser) {
                                 Notification::make()
                                     ->title('Disposisi Diteruskan')
@@ -359,9 +291,40 @@ class DisposisiResource extends Resource
                             }
                         }
 
+                        if (! empty($data['tembusan_user_ids'])) {
+                            foreach ($data['tembusan_user_ids'] as $userId) {
+                                Disposisi::create([
+                                    'surat_masuk_id' => $record->surat_masuk_id,
+                                    'dari_user_id' => \Illuminate\Support\Facades\Auth::id(),
+                                    'ke_user_id' => $userId,
+                                    'ke_unit_id' => null,
+                                    'instruksi' => 'Mengetahui (Tembusan). Instruksi utama: '.$data['instruksi'],
+                                    'status' => 'selesai',
+                                    'is_tembusan' => true,
+                                    'parent_id' => $newDisposisi->id,
+                                ]);
+
+                                $tempUser = User::find($userId);
+                                if ($tempUser) {
+                                    Notification::make()
+                                        ->title('Tembusan Disposisi')
+                                        ->body("Anda mendapat tembusan disposisi untuk surat: {$record->suratMasuk->perihal}")
+                                        ->icon('heroicon-o-information-circle')
+                                        ->iconColor('info')
+                                        ->sendToDatabase($tempUser);
+                                }
+                            }
+                        }
+
                         Notification::make()->title('Disposisi berhasil diteruskan')->success()->send();
                     })
                     ->visible(fn (Disposisi $record): bool => Auth::user()?->can('forward', $record) ?? false),
+                \Filament\Actions\Action::make('lihatSuratMasuk')
+                    ->label('Detail Surat')
+                    ->icon('heroicon-o-document-text')
+                    ->color('gray')
+                    ->url(fn (Disposisi $record): string => static::getSuratMasukUrl($record))
+                    ->openUrlInNewTab(),
                 \Filament\Actions\ViewAction::make(),
                 \Filament\Actions\EditAction::make(),
             ])

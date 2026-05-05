@@ -13,6 +13,12 @@ class EditDisposisi extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('lihatSuratMasuk')
+                ->label('Detail Surat')
+                ->icon('heroicon-o-document-text')
+                ->color('gray')
+                ->url(fn (): string => DisposisiResource::getSuratMasukUrl($this->record))
+                ->openUrlInNewTab(),
             Actions\DeleteAction::make(),
         ];
     }

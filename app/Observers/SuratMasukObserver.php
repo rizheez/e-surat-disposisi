@@ -14,24 +14,18 @@ class SuratMasukObserver
 {
     public function created(SuratMasuk $suratMasuk): void
     {
-        $users = User::role([
-            'admin',
-            ...User::leadershipRoleNames(),
-            'staf_administrasi',
-        ])->get();
+        $recipient = $suratMasuk->penerimaUser;
 
-        if (filled($suratMasuk->penerima)) {
-            $users->push(User::find($suratMasuk->penerima));
+        if (! $recipient) {
+            return;
         }
 
-        $this->sendToUsers(
-            users: $users,
-            notification: Notification::make()
-                ->title('Surat Masuk Baru')
-                ->body("Surat dari {$suratMasuk->pengirim}: {$suratMasuk->perihal}")
-                ->icon('heroicon-o-envelope')
-                ->iconColor('info'),
-        );
+        Notification::make()
+            ->title('Surat Masuk Baru')
+            ->body("Anda menerima surat masuk dari {$suratMasuk->pengirim}: {$suratMasuk->perihal}")
+            ->icon('heroicon-o-inbox-arrow-down')
+            ->iconColor('info')
+            ->sendToDatabase($recipient);
     }
 
     public function updated(SuratMasuk $suratMasuk): void

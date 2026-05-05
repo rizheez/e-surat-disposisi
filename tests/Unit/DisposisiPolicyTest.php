@@ -11,14 +11,14 @@ use PHPUnit\Framework\TestCase;
 
 class DisposisiPolicyTest extends TestCase
 {
-    public function test_creator_target_and_unit_member_can_view_disposisi(): void
+    public function test_creator_and_user_target_can_view_disposisi(): void
     {
         $policy = new DisposisiPolicy;
         $disposisi = $this->disposisi(dariUserId: 1, keUserId: 2, keUnitId: 10);
 
         $this->assertTrue($policy->view($this->user(id: 1), $disposisi));
         $this->assertTrue($policy->view($this->user(id: 2), $disposisi));
-        $this->assertTrue($policy->view($this->user(id: 3, unitKerjaId: 10), $disposisi));
+        $this->assertFalse($policy->view($this->user(id: 3, unitKerjaId: 10), $disposisi));
     }
 
     public function test_unrelated_user_cannot_view_disposisi(): void

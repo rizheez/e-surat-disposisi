@@ -20,11 +20,11 @@ class KlasifikasiResource extends Resource
 
     protected static string | UnitEnum | null $navigationGroup = 'Master Data';
 
-    protected static ?string $navigationLabel = 'Klasifikasi Surat';
+    protected static ?string $navigationLabel = 'Klasifikasi Kode Surat';
 
     protected static ?string $modelLabel = 'Klasifikasi';
 
-    protected static ?string $pluralModelLabel = 'Klasifikasi Surat';
+    protected static ?string $pluralModelLabel = 'Klasifikasi Kode Surat';
 
     protected static ?int $navigationSort = 2;
 
@@ -37,7 +37,7 @@ class KlasifikasiResource extends Resource
     {
         return $form
             ->schema([
-                Section::make('Klasifikasi Surat')
+                Section::make('Klasifikasi Kode Surat')
                     ->schema([
                         Forms\Components\TextInput::make('kode')
                             ->required()

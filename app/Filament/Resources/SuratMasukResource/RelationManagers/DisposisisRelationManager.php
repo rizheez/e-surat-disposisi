@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\Resources\SuratMasukResource\RelationManagers;
 
 use App\Models\Disposisi;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -28,61 +28,15 @@ class DisposisisRelationManager extends RelationManager
     {
         return $form
             ->schema([
-                Forms\Components\Radio::make('tujuan_tipe')
-                    ->label('Jenis Tujuan')
-                    ->options([
-                        'user' => 'User',
-                        'unit' => 'Unit Kerja',
-                    ])
-                    ->default(fn (?Disposisi $record): string => blank($record?->ke_user_id) && filled($record?->ke_unit_id) ? 'unit' : 'user')
-                    ->required()
-                    ->live()
-                    ->dehydrated(false)
-                    ->inline()
-                    ->afterStateHydrated(function (Set $set, ?Disposisi $record): void {
-                        if (! $record) {
-                            return;
-                        }
-
-                        if (filled($record->ke_user_id)) {
-                            $set('tujuan_tipe', 'user');
-                            $set('ke_unit_id', null);
-
-                            return;
-                        }
-
-                        if (filled($record->ke_unit_id)) {
-                            $set('tujuan_tipe', 'unit');
-                            $set('ke_user_id', null);
-
-                            return;
-                        }
-
-                        $set('tujuan_tipe', 'user');
-                    })
-                    ->afterStateUpdated(function (Set $set): void {
-                        $set('ke_user_id', null);
-                        $set('ke_unit_id', null);
-                    }),
                 Forms\Components\Select::make('ke_user_id')
                     ->label('Tujuan User')
-                    ->options(fn () => \App\Models\User::pluck('name', 'id'))
+                    ->options(fn () => User::pluck('name', 'id'))
                     ->searchable()
                     ->preload()
-                    ->visible(fn (Get $get): bool => $get('tujuan_tipe') === 'user')
-                    ->required(fn (Get $get): bool => $get('tujuan_tipe') === 'user')
-                    ->dehydratedWhenHidden(),
-                Forms\Components\Select::make('ke_unit_id')
-                    ->label('Tujuan Unit Kerja')
-                    ->options(fn () => \App\Models\UnitKerja::pluck('nama', 'id'))
-                    ->searchable()
-                    ->preload()
-                    ->visible(fn (Get $get): bool => $get('tujuan_tipe') === 'unit')
-                    ->required(fn (Get $get): bool => $get('tujuan_tipe') === 'unit')
-                    ->dehydratedWhenHidden(),
+                    ->required(),
                 Forms\Components\Select::make('tembusan_user_ids')
                     ->label('Tembusan (Opsional)')
-                    ->options(fn () => \App\Models\User::pluck('name', 'id'))
+                    ->options(fn () => User::pluck('name', 'id'))
                     ->multiple()
                     ->searchable()
                     ->preload(),
@@ -109,15 +63,10 @@ class DisposisisRelationManager extends RelationManager
                     return $query;
                 }
 
-                $unitId = $user->unit_kerja_id;
-
-                return $query->where(function (Builder $query) use ($user, $unitId): void {
+                return $query->where(function (Builder $query) use ($user): void {
                     $query
                         ->where('dari_user_id', $user->id)
-                        ->orWhere('ke_user_id', $user->id)
-                        ->when(filled($unitId), function (Builder $query) use ($unitId): void {
-                            $query->orWhere('ke_unit_id', $unitId);
-                        });
+                        ->orWhere('ke_user_id', $user->id);
                 });
             })
             ->columns([
@@ -125,9 +74,6 @@ class DisposisisRelationManager extends RelationManager
                     ->label('Dari'),
                 Tables\Columns\TextColumn::make('keUser.name')
                     ->label('Kepada')
-                    ->default('-'),
-                Tables\Columns\TextColumn::make('keUnit.nama')
-                    ->label('Unit Tujuan')
                     ->default('-'),
                 Tables\Columns\TextColumn::make('instruksi')
                     ->label('Instruksi')
@@ -188,17 +134,10 @@ class DisposisisRelationManager extends RelationManager
                         }
 
                         // Hanya eksekutor (tindak lanjut, bukan tembusan) yang boleh membuat disposisi lanjut.
-                        $unitId = $user->unit_kerja_id;
-
                         return $owner->disposisis()
                             ->where('is_tembusan', false)
                             ->where('status', '!=', 'selesai')
-                            ->where(function ($q) use ($user, $unitId) {
-                                $q->where('ke_user_id', $user->id);
-                                if (! empty($unitId)) {
-                                    $q->orWhere('ke_unit_id', $unitId);
-                                }
-                            })
+                            ->where('ke_user_id', $user->id)
                             ->exists();
                     })
                     ->mutateFormDataUsing(function (array $data): array {
@@ -209,7 +148,7 @@ class DisposisisRelationManager extends RelationManager
                     })
                     ->after(function (\App\Models\Disposisi $record, array $data) {
                         if ($record->ke_user_id) {
-                            $targetUser = \App\Models\User::find($record->ke_user_id);
+                            $targetUser = User::find($record->ke_user_id);
                             if ($targetUser) {
                                 Notification::make()
                                     ->title('Disposisi Baru')
@@ -233,7 +172,7 @@ class DisposisisRelationManager extends RelationManager
                                     'parent_id' => $record->id,
                                 ]);
 
-                                $tempUser = \App\Models\User::find($userId);
+                                $tempUser = User::find($userId);
                                 if ($tempUser) {
                                     Notification::make()
                                         ->title('Tembusan Disposisi')

@@ -148,13 +148,8 @@ class DisposisiPolicy
 
     private function isTarget(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        if (filled($disposisi->ke_user_id) && (int) $disposisi->ke_user_id === (int) $authUser->getAuthIdentifier()) {
-            return true;
-        }
-
-        return filled($disposisi->ke_unit_id)
-            && filled($authUser->unit_kerja_id)
-            && (int) $disposisi->ke_unit_id === (int) $authUser->unit_kerja_id;
+        return filled($disposisi->ke_user_id)
+            && (int) $disposisi->ke_user_id === (int) $authUser->getAuthIdentifier();
     }
 
 }

@@ -16,6 +16,8 @@ class TemplateSuratResource extends Resource
 {
     protected static ?string $model = TemplateSurat::class;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-duplicate';
 
     protected static string|UnitEnum|null $navigationGroup = 'Master Data';
@@ -30,7 +32,7 @@ class TemplateSuratResource extends Resource
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->canManageSuratMasuk();
+        return false;
     }
 
     public static function form(Schema $form): Schema
