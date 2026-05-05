@@ -133,12 +133,12 @@ class DisposisisRelationManager extends RelationManager
                             return false;
                         }
 
-                        // Hanya eksekutor (tindak lanjut, bukan tembusan) yang boleh membuat disposisi lanjut.
-                        return $owner->disposisis()
-                            ->where('is_tembusan', false)
-                            ->where('status', '!=', 'selesai')
-                            ->where('ke_user_id', $user->id)
-                            ->exists();
+                        if ($owner->disposisis()->where('is_tembusan', false)->exists()) {
+                            return false;
+                        }
+
+                        // Dari detail surat, tombol buat disposisi juga hanya untuk disposisi awal.
+                        return $user->canManageDisposisi();
                     })
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['dari_user_id'] = \Illuminate\Support\Facades\Auth::id();

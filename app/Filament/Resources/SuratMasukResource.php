@@ -7,6 +7,8 @@ use App\Filament\Resources\SuratMasukResource\RelationManagers;
 use App\Models\Disposisi;
 use App\Models\SuratMasuk;
 use App\Models\User;
+use Asmit\FilamentUpload\Enums\PdfViewFit;
+use Asmit\FilamentUpload\Forms\Components\AdvancedFileUpload;
 use BackedEnum;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -107,12 +109,18 @@ class SuratMasukResource extends Resource
 
                 Section::make('Lampiran & Keterangan')
                     ->schema([
-                        Forms\Components\FileUpload::make('file_path')
+                        AdvancedFileUpload::make('file_path')
                             ->label('File Surat (PDF/Scan)')
                             ->disk('public')
                             ->directory('surat-masuk')
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
                             ->maxSize(10240)
+                            ->pdfPreviewHeight(400)
+                            ->pdfDisplayPage(1)
+                            ->pdfToolbar(true)
+                            ->pdfZoomLevel(100)
+                            ->pdfFitType(PdfViewFit::FIT)
+                            ->pdfNavPanes(true)
                             ->columnSpanFull(),
                         Forms\Components\Textarea::make('keterangan')
                             ->label('Keterangan')
@@ -343,21 +351,16 @@ class SuratMasukResource extends Resource
                             return false;
                         }
 
-                        // Admin bebas.
+                        if ($record->disposisis()->where('is_tembusan', false)->exists()) {
+                            return false;
+                        }
+
+                        // Tombol ini hanya untuk disposisi awal.
                         if ($user->hasRole('admin')) {
                             return true;
                         }
 
-                        if (! $user->canManageDisposisi()) {
-                            return false;
-                        }
-
-                        // Hanya yang punya disposisi "tindak lanjut" (bukan tembusan) yang bisa membuat disposisi lanjut.
-                        return $record->disposisis()
-                            ->where('is_tembusan', false)
-                            ->where('status', '!=', 'selesai')
-                            ->where('ke_user_id', $user->id)
-                            ->exists();
+                        return $user->canManageDisposisi();
                     }),
                 \Filament\Actions\Action::make('tandaSelesai')
                     ->label('Selesai')

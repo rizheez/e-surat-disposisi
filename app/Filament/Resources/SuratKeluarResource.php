@@ -9,6 +9,8 @@ use App\Models\GeneratedNomorSurat;
 use App\Models\Klasifikasi;
 use App\Models\SuratKeluar;
 use App\Services\QrSignatureService;
+use Asmit\FilamentUpload\Enums\PdfViewFit;
+use Asmit\FilamentUpload\Forms\Components\AdvancedFileUpload;
 use BackedEnum;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -191,7 +193,7 @@ class SuratKeluarResource extends Resource
                 // ── Upload File ──
                 Section::make('Upload Dokumen')
                     ->schema([
-                        Forms\Components\FileUpload::make('file_path')
+                        AdvancedFileUpload::make('file_path')
                             ->label('File Surat (PDF)')
                             ->disk('public')
                             ->directory('surat-keluar')
@@ -199,6 +201,12 @@ class SuratKeluarResource extends Resource
                                 'application/pdf',
                             ])
                             ->maxSize(self::MAX_UPLOAD_SIZE_KB)
+                            ->pdfPreviewHeight(400)
+                            ->pdfDisplayPage(1)
+                            ->pdfToolbar(true)
+                            ->pdfZoomLevel(100)
+                            ->pdfFitType(PdfViewFit::FIT)
+                            ->pdfNavPanes(true)
                             ->required(fn(Get $get): bool => $get('metode') === 'upload')
                             ->helperText(new HtmlString(
                                 'Maks. ' . self::MAX_UPLOAD_SIZE_MB . ' MB dan hanya PDF. Upload PDF dianggap sudah ditandatangani, sehingga langsung masuk status Disetujui. Jika file di atas ' . self::MAX_UPLOAD_SIZE_MB . ' MB, kompres dulu di <a href="' . self::COMPRESS_PDF_URL . '" target="_blank" rel="noopener noreferrer" class="font-medium text-primary-600 underline">iLovePDF Compress PDF</a>.'
