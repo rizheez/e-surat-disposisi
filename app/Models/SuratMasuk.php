@@ -11,14 +11,14 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class SuratMasuk extends Model
 {
-    use SoftDeletes, LogsActivity;
+    use LogsActivity, SoftDeletes;
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
             ->logOnly(['nomor_surat', 'perihal', 'status', 'tanggal_surat'])
             ->logOnlyDirty()
-            ->setDescriptionForEvent(fn(string $eventName) => "Surat masuk {$eventName}")
+            ->setDescriptionForEvent(fn (string $eventName) => "Surat masuk {$eventName}")
             ->useLogName('surat-masuk');
     }
 
@@ -74,17 +74,11 @@ class SuratMasuk extends Model
         $tahun = date('Y');
         $bulan = self::getRomanMonth((int) date('m'));
 
-        $lastSurat = self::whereYear('created_at', $tahun)
-            ->whereMonth('created_at', (int) date('m'))
-            ->orderBy('id', 'desc')
-            ->first();
-
-        if ($lastSurat) {
-            preg_match('/SM\/(\d+)\//', $lastSurat->nomor_agenda, $matches);
-            $nextNumber = isset($matches[1]) ? (int) $matches[1] + 1 : 1;
-        } else {
-            $nextNumber = 1;
-        }
+        $nextNumber = self::withTrashed()
+            ->where('nomor_agenda', 'like', "SM/%/{$bulan}/{$tahun}")
+            ->pluck('nomor_agenda')
+            ->map(fn (string $nomorAgenda): int => self::extractNomorAgendaUrut($nomorAgenda))
+            ->max() + 1;
 
         return sprintf('SM/%03d/%s/%s', $nextNumber, $bulan, $tahun);
     }
@@ -107,6 +101,13 @@ class SuratMasuk extends Model
         ];
 
         return $romans[$month] ?? 'I';
+    }
+
+    private static function extractNomorAgendaUrut(string $nomorAgenda): int
+    {
+        preg_match('/^SM\/(\d+)\/[IVXLCDM]+\/\d{4}$/', $nomorAgenda, $matches);
+
+        return isset($matches[1]) ? (int) $matches[1] : 0;
     }
 
     protected static function booted(): void
