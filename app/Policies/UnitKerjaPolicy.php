@@ -4,72 +4,77 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\UnitKerja;
+use App\Policies\Concerns\AuthorizesApplicationAccess;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Foundation\Auth\User as AuthUser;
 
 class UnitKerjaPolicy
 {
-    use HandlesAuthorization;
-    
+    use AuthorizesApplicationAccess, HandlesAuthorization;
+
     public function viewAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ViewAny:UnitKerja');
+        return $this->isAdmin($authUser)
+            || $this->hasPermission($authUser, 'view_unit_kerja');
     }
 
     public function view(AuthUser $authUser, UnitKerja $unitKerja): bool
     {
-        return $authUser->can('View:UnitKerja');
+        return $this->viewAny($authUser);
     }
 
     public function create(AuthUser $authUser): bool
     {
-        return $authUser->can('Create:UnitKerja');
+        return $this->isAdmin($authUser)
+            || $this->hasPermission($authUser, 'create_unit_kerja');
     }
 
     public function update(AuthUser $authUser, UnitKerja $unitKerja): bool
     {
-        return $authUser->can('Update:UnitKerja');
+        return $this->isAdmin($authUser)
+            || $this->hasPermission($authUser, 'edit_unit_kerja');
     }
 
     public function delete(AuthUser $authUser, UnitKerja $unitKerja): bool
     {
-        return $authUser->can('Delete:UnitKerja');
+        return $this->isAdmin($authUser)
+            || $this->hasPermission($authUser, 'delete_unit_kerja');
     }
 
     public function deleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('DeleteAny:UnitKerja');
+        return $this->isAdmin($authUser)
+            || $this->hasPermission($authUser, 'delete_unit_kerja');
     }
 
     public function restore(AuthUser $authUser, UnitKerja $unitKerja): bool
     {
-        return $authUser->can('Restore:UnitKerja');
+        return $this->isAdmin($authUser);
     }
 
     public function forceDelete(AuthUser $authUser, UnitKerja $unitKerja): bool
     {
-        return $authUser->can('ForceDelete:UnitKerja');
+        return $this->isAdmin($authUser);
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ForceDeleteAny:UnitKerja');
+        return $this->isAdmin($authUser);
     }
 
     public function restoreAny(AuthUser $authUser): bool
     {
-        return $authUser->can('RestoreAny:UnitKerja');
+        return $this->isAdmin($authUser);
     }
 
     public function replicate(AuthUser $authUser, UnitKerja $unitKerja): bool
     {
-        return $authUser->can('Replicate:UnitKerja');
+        return false;
     }
 
     public function reorder(AuthUser $authUser): bool
     {
-        return $authUser->can('Reorder:UnitKerja');
+        return false;
     }
-
 }

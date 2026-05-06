@@ -4,23 +4,26 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\Disposisi;
+use App\Policies\Concerns\AuthorizesApplicationAccess;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Foundation\Auth\User as AuthUser;
 
 class DisposisiPolicy
 {
-    use HandlesAuthorization;
-    
+    use AuthorizesApplicationAccess, HandlesAuthorization;
+
     public function viewAny(AuthUser $authUser): bool
     {
-        return $this->hasPermission($authUser, 'ViewAny:Disposisi');
+        return $this->isAdmin($authUser)
+            || $this->canManageDisposisi($authUser)
+            || $this->hasPermission($authUser, 'view_disposisi');
     }
 
     public function view(AuthUser $authUser, Disposisi $disposisi): bool
     {
         return $this->isAdmin($authUser)
-            || $this->hasPermission($authUser, 'View:Disposisi')
+            || $this->hasPermission($authUser, 'view_disposisi')
             || $this->isParticipant($authUser, $disposisi);
     }
 
@@ -32,48 +35,48 @@ class DisposisiPolicy
     public function update(AuthUser $authUser, Disposisi $disposisi): bool
     {
         return $this->isAdmin($authUser)
-            || $this->hasPermission($authUser, 'Update:Disposisi')
+            || $this->hasPermission($authUser, 'edit_disposisi')
             || $this->isActiveTarget($authUser, $disposisi);
     }
 
     public function delete(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $this->isAdmin($authUser) || $this->hasPermission($authUser, 'Delete:Disposisi');
+        return $this->isAdmin($authUser);
     }
 
     public function deleteAny(AuthUser $authUser): bool
     {
-        return $this->hasPermission($authUser, 'DeleteAny:Disposisi');
+        return $this->isAdmin($authUser);
     }
 
     public function restore(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $this->hasPermission($authUser, 'Restore:Disposisi');
+        return $this->isAdmin($authUser);
     }
 
     public function forceDelete(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $this->isAdmin($authUser) || $this->hasPermission($authUser, 'ForceDelete:Disposisi');
+        return $this->isAdmin($authUser);
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $this->hasPermission($authUser, 'ForceDeleteAny:Disposisi');
+        return $this->isAdmin($authUser);
     }
 
     public function restoreAny(AuthUser $authUser): bool
     {
-        return $this->hasPermission($authUser, 'RestoreAny:Disposisi');
+        return $this->isAdmin($authUser);
     }
 
     public function replicate(AuthUser $authUser, Disposisi $disposisi): bool
     {
-        return $this->hasPermission($authUser, 'Replicate:Disposisi');
+        return false;
     }
 
     public function reorder(AuthUser $authUser): bool
     {
-        return $this->hasPermission($authUser, 'Reorder:Disposisi');
+        return false;
     }
 
     public function process(AuthUser $authUser, Disposisi $disposisi): bool
@@ -101,20 +104,6 @@ class DisposisiPolicy
     public function updateStatus(AuthUser $authUser, Disposisi $disposisi): bool
     {
         return $this->forward($authUser, $disposisi);
-    }
-
-    private function isAdmin(AuthUser $authUser): bool
-    {
-        return method_exists($authUser, 'isAdminRole') && $authUser->isAdminRole();
-    }
-
-    private function hasPermission(AuthUser $authUser, string $permission): bool
-    {
-        try {
-            return $authUser->can($permission);
-        } catch (\Throwable) {
-            return false;
-        }
     }
 
     private function isParticipant(AuthUser $authUser, Disposisi $disposisi): bool
@@ -151,5 +140,4 @@ class DisposisiPolicy
         return filled($disposisi->ke_user_id)
             && (int) $disposisi->ke_user_id === (int) $authUser->getAuthIdentifier();
     }
-
 }

@@ -4,72 +4,72 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Policies\Concerns\AuthorizesApplicationAccess;
+use Illuminate\Auth\Access\HandlesAuthorization;
 use Illuminate\Foundation\Auth\User as AuthUser;
 use Spatie\Permission\Models\Role;
-use Illuminate\Auth\Access\HandlesAuthorization;
 
 class RolePolicy
 {
-    use HandlesAuthorization;
-    
+    use AuthorizesApplicationAccess, HandlesAuthorization;
+
     public function viewAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ViewAny:Role');
+        return $this->isAdmin($authUser);
     }
 
     public function view(AuthUser $authUser, Role $role): bool
     {
-        return $authUser->can('View:Role');
+        return $this->isAdmin($authUser);
     }
 
     public function create(AuthUser $authUser): bool
     {
-        return $authUser->can('Create:Role');
+        return $this->isAdmin($authUser);
     }
 
     public function update(AuthUser $authUser, Role $role): bool
     {
-        return $authUser->can('Update:Role');
+        return $this->isAdmin($authUser);
     }
 
     public function delete(AuthUser $authUser, Role $role): bool
     {
-        return $authUser->can('Delete:Role');
+        return $this->isAdmin($authUser) && $role->name !== 'admin';
     }
 
     public function deleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('DeleteAny:Role');
+        return $this->isAdmin($authUser);
     }
 
     public function restore(AuthUser $authUser, Role $role): bool
     {
-        return $authUser->can('Restore:Role');
+        return $this->isAdmin($authUser);
     }
 
     public function forceDelete(AuthUser $authUser, Role $role): bool
     {
-        return $authUser->can('ForceDelete:Role');
+        return $this->isAdmin($authUser) && $role->name !== 'admin';
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ForceDeleteAny:Role');
+        return $this->isAdmin($authUser);
     }
 
     public function restoreAny(AuthUser $authUser): bool
     {
-        return $authUser->can('RestoreAny:Role');
+        return $this->isAdmin($authUser);
     }
 
     public function replicate(AuthUser $authUser, Role $role): bool
     {
-        return $authUser->can('Replicate:Role');
+        return false;
     }
 
     public function reorder(AuthUser $authUser): bool
     {
-        return $authUser->can('Reorder:Role');
+        return false;
     }
-
 }

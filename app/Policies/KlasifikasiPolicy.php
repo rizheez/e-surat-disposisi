@@ -4,72 +4,72 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\Klasifikasi;
+use App\Policies\Concerns\AuthorizesApplicationAccess;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Foundation\Auth\User as AuthUser;
 
 class KlasifikasiPolicy
 {
-    use HandlesAuthorization;
-    
+    use AuthorizesApplicationAccess, HandlesAuthorization;
+
     public function viewAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ViewAny:Klasifikasi');
+        return $this->isAdmin($authUser);
     }
 
     public function view(AuthUser $authUser, Klasifikasi $klasifikasi): bool
     {
-        return $authUser->can('View:Klasifikasi');
+        return $this->isAdmin($authUser);
     }
 
     public function create(AuthUser $authUser): bool
     {
-        return $authUser->can('Create:Klasifikasi');
+        return $this->isAdmin($authUser);
     }
 
     public function update(AuthUser $authUser, Klasifikasi $klasifikasi): bool
     {
-        return $authUser->can('Update:Klasifikasi');
+        return $this->isAdmin($authUser);
     }
 
     public function delete(AuthUser $authUser, Klasifikasi $klasifikasi): bool
     {
-        return $authUser->can('Delete:Klasifikasi');
+        return $this->isAdmin($authUser);
     }
 
     public function deleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('DeleteAny:Klasifikasi');
+        return $this->isAdmin($authUser);
     }
 
     public function restore(AuthUser $authUser, Klasifikasi $klasifikasi): bool
     {
-        return $authUser->can('Restore:Klasifikasi');
+        return $this->isAdmin($authUser);
     }
 
     public function forceDelete(AuthUser $authUser, Klasifikasi $klasifikasi): bool
     {
-        return $authUser->can('ForceDelete:Klasifikasi');
+        return $this->isAdmin($authUser);
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ForceDeleteAny:Klasifikasi');
+        return $this->isAdmin($authUser);
     }
 
     public function restoreAny(AuthUser $authUser): bool
     {
-        return $authUser->can('RestoreAny:Klasifikasi');
+        return $this->isAdmin($authUser);
     }
 
     public function replicate(AuthUser $authUser, Klasifikasi $klasifikasi): bool
     {
-        return $authUser->can('Replicate:Klasifikasi');
+        return false;
     }
 
     public function reorder(AuthUser $authUser): bool
     {
-        return $authUser->can('Reorder:Klasifikasi');
+        return false;
     }
-
 }

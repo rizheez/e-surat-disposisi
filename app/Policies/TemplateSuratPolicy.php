@@ -4,72 +4,86 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\TemplateSurat;
+use App\Policies\Concerns\AuthorizesApplicationAccess;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Foundation\Auth\User as AuthUser;
 
 class TemplateSuratPolicy
 {
-    use HandlesAuthorization;
-    
+    use AuthorizesApplicationAccess, HandlesAuthorization;
+
     public function viewAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ViewAny:TemplateSurat');
+        return $this->isAdmin($authUser)
+            || $this->hasPermission($authUser, 'view_template_surat');
     }
 
     public function view(AuthUser $authUser, TemplateSurat $templateSurat): bool
     {
-        return $authUser->can('View:TemplateSurat');
+        return $this->viewAny($authUser)
+            || $this->isCreator($authUser, $templateSurat);
     }
 
     public function create(AuthUser $authUser): bool
     {
-        return $authUser->can('Create:TemplateSurat');
+        return $this->isAdmin($authUser)
+            || $this->hasPermission($authUser, 'create_template_surat');
     }
 
     public function update(AuthUser $authUser, TemplateSurat $templateSurat): bool
     {
-        return $authUser->can('Update:TemplateSurat');
+        return $this->isAdmin($authUser)
+            || $this->hasPermission($authUser, 'edit_template_surat')
+            || $this->isCreator($authUser, $templateSurat);
     }
 
     public function delete(AuthUser $authUser, TemplateSurat $templateSurat): bool
     {
-        return $authUser->can('Delete:TemplateSurat');
+        return $this->isAdmin($authUser)
+            || $this->hasPermission($authUser, 'delete_template_surat')
+            || $this->isCreator($authUser, $templateSurat);
     }
 
     public function deleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('DeleteAny:TemplateSurat');
+        return $this->isAdmin($authUser)
+            || $this->hasPermission($authUser, 'delete_template_surat');
     }
 
     public function restore(AuthUser $authUser, TemplateSurat $templateSurat): bool
     {
-        return $authUser->can('Restore:TemplateSurat');
+        return $this->isAdmin($authUser);
     }
 
     public function forceDelete(AuthUser $authUser, TemplateSurat $templateSurat): bool
     {
-        return $authUser->can('ForceDelete:TemplateSurat');
+        return $this->isAdmin($authUser);
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ForceDeleteAny:TemplateSurat');
+        return $this->isAdmin($authUser);
     }
 
     public function restoreAny(AuthUser $authUser): bool
     {
-        return $authUser->can('RestoreAny:TemplateSurat');
+        return $this->isAdmin($authUser);
     }
 
     public function replicate(AuthUser $authUser, TemplateSurat $templateSurat): bool
     {
-        return $authUser->can('Replicate:TemplateSurat');
+        return false;
     }
 
     public function reorder(AuthUser $authUser): bool
     {
-        return $authUser->can('Reorder:TemplateSurat');
+        return false;
     }
 
+    private function isCreator(AuthUser $authUser, TemplateSurat $templateSurat): bool
+    {
+        return filled($templateSurat->created_by)
+            && (int) $templateSurat->created_by === (int) $authUser->getAuthIdentifier();
+    }
 }
