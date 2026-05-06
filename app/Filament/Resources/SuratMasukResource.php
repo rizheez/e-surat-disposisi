@@ -51,7 +51,7 @@ class SuratMasukResource extends Resource
                         Forms\Components\TextInput::make('nomor_agenda')
                             ->maxLength(50)
                             ->label('Nomor Agenda')
-                            ->visible(fn (string $operation): bool => $operation === 'view'),
+                            ->visible(fn(string $operation): bool => $operation === 'view'),
                         Forms\Components\DatePicker::make('tanggal_surat')
                             ->required()
                             ->label('Tanggal Surat')
@@ -103,6 +103,10 @@ class SuratMasukResource extends Resource
                             ->label('Penerima')
                             ->relationship('penerimaUser', 'name')
                             ->searchable()
+                            ->required()
+                            ->validationMessages([
+                                'required' => 'Penerima surat harus dipilih.',
+                            ])
                             ->preload()
                             ->placeholder('Pilih penerima'),
                     ])->columns(2),
@@ -111,6 +115,10 @@ class SuratMasukResource extends Resource
                     ->schema([
                         AdvancedFileUpload::make('file_path')
                             ->label('File Surat (PDF/Scan)')
+                            ->required()
+                            ->validationMessages([
+                                'required' => 'File surat harus diunggah.',
+                            ])
                             ->disk('public')
                             ->directory('surat-masuk')
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
@@ -274,7 +282,7 @@ class SuratMasukResource extends Resource
                             ->required(),
                         Forms\Components\Select::make('tembusan_user_ids')
                             ->label('Tembusan (Opsional)')
-                            ->options(fn () => \App\Models\User::pluck('name', 'id'))
+                            ->options(fn() => \App\Models\User::pluck('name', 'id'))
                             ->multiple()
                             ->searchable()
                             ->preload()
@@ -286,6 +294,7 @@ class SuratMasukResource extends Resource
                             ->rows(3),
                         Forms\Components\DatePicker::make('batas_waktu')
                             ->label('Batas Waktu')
+                            ->required()
                             ->minDate(now()),
                     ])
                     ->action(function (SuratMasuk $record, array $data) {
@@ -457,9 +466,9 @@ class SuratMasukResource extends Resource
                     ->label('Lihat File')
                     ->icon('heroicon-o-document-magnifying-glass')
                     ->color('info')
-                    ->url(fn (SuratMasuk $record): string => Storage::disk('public')->url($record->file_path))
+                    ->url(fn(SuratMasuk $record): string => Storage::disk('public')->url($record->file_path))
                     ->openUrlInNewTab()
-                    ->visible(fn (SuratMasuk $record): bool => filled($record->file_path)),
+                    ->visible(fn(SuratMasuk $record): bool => filled($record->file_path)),
                 \Filament\Actions\ViewAction::make(),
                 \Filament\Actions\EditAction::make(),
                 \Filament\Actions\DeleteAction::make(),

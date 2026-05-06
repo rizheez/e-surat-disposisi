@@ -20,7 +20,7 @@ class DisposisisRelationManager extends RelationManager
 {
     protected static string $relationship = 'disposisis';
 
-    protected static ?string $title = 'Disposisi';
+    protected static ?string $title = 'Disposisi & Tembusan';
 
     protected static ?string $modelLabel = 'Disposisi';
 
@@ -45,7 +45,8 @@ class DisposisisRelationManager extends RelationManager
                     ->label('Instruksi')
                     ->rows(3),
                 Forms\Components\DatePicker::make('batas_waktu')
-                    ->label('Batas Waktu'),
+                    ->label('Batas Waktu')
+                    ->required(),
             ]);
     }
 
@@ -75,15 +76,14 @@ class DisposisisRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('keUser.name')
                     ->label('Kepada')
                     ->default('-'),
+                Tables\Columns\TextColumn::make('jenis')
+                    ->label('Jenis')
+                    ->badge()
+                    ->state(fn (Disposisi $record): string => $record->is_tembusan ? 'Tembusan' : 'Disposisi')
+                    ->color(fn (Disposisi $record): string => $record->is_tembusan ? 'info' : 'warning'),
                 Tables\Columns\TextColumn::make('instruksi')
                     ->label('Instruksi')
                     ->limit(50),
-                Tables\Columns\IconColumn::make('is_tembusan')
-                    ->label('Tembusan')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('batas_waktu')
                     ->label('Batas Waktu')
                     ->date('d M Y')
@@ -109,7 +109,11 @@ class DisposisisRelationManager extends RelationManager
                     ->sortable(),
             ])
             ->filters([
-                //
+                Tables\Filters\TernaryFilter::make('is_tembusan')
+                    ->label('Jenis')
+                    ->placeholder('Semua')
+                    ->trueLabel('Tembusan')
+                    ->falseLabel('Disposisi'),
             ])
             ->headerActions([
                 \Filament\Actions\CreateAction::make()

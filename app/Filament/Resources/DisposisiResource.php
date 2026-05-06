@@ -40,7 +40,8 @@ class DisposisiResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery();
+        $query = parent::getEloquentQuery()
+            ->where('is_tembusan', false);
 
         $user = Auth::user();
         if (! $user) {
@@ -94,6 +95,7 @@ class DisposisiResource extends Resource
                             ->columnSpanFull(),
                         Forms\Components\DatePicker::make('batas_waktu')
                             ->label('Batas Waktu')
+                            ->required()
                             ->minDate(now()),
                     ])->columns(2)->columnSpanFull(),
 
@@ -261,7 +263,8 @@ class DisposisiResource extends Resource
                             ->label('Instruksi')
                             ->rows(3),
                         Forms\Components\DatePicker::make('batas_waktu')
-                            ->label('Batas Waktu'),
+                            ->label('Batas Waktu')
+                            ->required(),
                     ])
                     ->action(function (Disposisi $record, array $data) {
                         $newDisposisi = Disposisi::create([
