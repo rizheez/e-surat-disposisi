@@ -11,6 +11,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Size;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -225,7 +226,13 @@ class DisposisisRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
-                \Filament\Actions\DeleteAction::make(),
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\DeleteAction::make(),
+                ])
+                    ->label('Menu')
+                    ->size(Size::Small)
+                    ->button()
+                    ->color('warning'),
             ])
             ->bulkActions([
                 \Filament\Actions\BulkActionGroup::make([

@@ -19,6 +19,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Size;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -419,37 +420,43 @@ class SuratKeluarResource extends Resource
                         fn($record) => $record->status === 'review'
                             && Auth::id() === $record->penandatangan_id
                     ),
-                \Filament\Actions\Action::make('downloadPdf')
-                    ->label('PDF')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->color('primary')
-                    ->url(fn(SuratKeluar $record): string => route('pdf.surat-keluar', $record))
-                    ->openUrlInNewTab()
-                    ->visible(fn($record) => in_array($record->status, ['approved', 'sent']) && $record->isi_surat),
-                \Filament\Actions\Action::make('downloadFile')
-                    ->label('File')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->color('primary')
-                    ->url(fn(SuratKeluar $record): string => route('surat-keluar.file.download', $record))
-                    ->openUrlInNewTab()
-                    ->visible(fn($record) => filled($record->file_path)),
-                \Filament\Actions\Action::make('arsipkan')
-                    ->label('Arsipkan')
-                    ->icon('heroicon-o-archive-box-arrow-down')
-                    ->color('gray')
-                    ->requiresConfirmation()
-                    ->modalDescription('Surat akan dipindahkan ke arsip.')
-                    ->action(function (SuratKeluar $record) {
-                        $record->update(['archived_at' => now()]);
-                        Notification::make()->title('Surat diarsipkan')->success()->send();
-                    })
-                    ->visible(fn($record) => $record->status === 'sent' && ! $record->archived_at),
-                \Filament\Actions\ViewAction::make(),
-                \Filament\Actions\EditAction::make()
-                    ->visible(fn(SuratKeluar $record): bool => self::canEdit($record)),
-                \Filament\Actions\DeleteAction::make()
-                    ->visible(fn(SuratKeluar $record): bool => self::canDelete($record)),
-                \Filament\Actions\RestoreAction::make(),
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\Action::make('downloadPdf')
+                        ->label('PDF')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('primary')
+                        ->url(fn(SuratKeluar $record): string => route('pdf.surat-keluar', $record))
+                        ->openUrlInNewTab()
+                        ->visible(fn($record) => in_array($record->status, ['approved', 'sent']) && $record->isi_surat),
+                    \Filament\Actions\Action::make('downloadFile')
+                        ->label('File')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('primary')
+                        ->url(fn(SuratKeluar $record): string => route('surat-keluar.file.download', $record))
+                        ->openUrlInNewTab()
+                        ->visible(fn($record) => filled($record->file_path)),
+                    \Filament\Actions\Action::make('arsipkan')
+                        ->label('Arsipkan')
+                        ->icon('heroicon-o-archive-box-arrow-down')
+                        ->color('gray')
+                        ->requiresConfirmation()
+                        ->modalDescription('Surat akan dipindahkan ke arsip.')
+                        ->action(function (SuratKeluar $record) {
+                            $record->update(['archived_at' => now()]);
+                            Notification::make()->title('Surat diarsipkan')->success()->send();
+                        })
+                        ->visible(fn($record) => $record->status === 'sent' && ! $record->archived_at),
+                    \Filament\Actions\ViewAction::make(),
+                    \Filament\Actions\EditAction::make()
+                        ->visible(fn(SuratKeluar $record): bool => self::canEdit($record)),
+                    \Filament\Actions\DeleteAction::make()
+                        ->visible(fn(SuratKeluar $record): bool => self::canDelete($record)),
+                    \Filament\Actions\RestoreAction::make(),
+                ])
+                    ->label('Menu')
+                    ->size(Size::Small)
+                    ->button()
+                    ->color('warning'),
             ])
             ->bulkActions([
                 \Filament\Actions\BulkActionGroup::make([

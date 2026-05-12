@@ -3,8 +3,9 @@
 namespace App\Filament\Resources\DisposisiResource\RelationManagers;
 
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
+use Filament\Support\Enums\Size;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -51,7 +52,13 @@ class BalasansRelationManager extends RelationManager
                     }),
             ])
             ->actions([
-                \Filament\Actions\DeleteAction::make(),
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\DeleteAction::make(),
+                ])
+                    ->label('Menu')
+                    ->size(Size::Small)
+                    ->button()
+                    ->color('warning'),
             ])
             ->defaultSort('created_at', 'desc');
     }

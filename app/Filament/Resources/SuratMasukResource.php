@@ -15,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Size;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -102,7 +103,8 @@ class SuratMasukResource extends Resource
                         Forms\Components\Select::make('penerima')
                             ->label('Penerima')
                             ->relationship('penerimaUser', 'name')
-                            ->searchable()
+                            ->getOptionLabelFromRecordUsing(fn(User $record): string => static::formatUserOptionLabel($record))
+                            ->searchable(['name', 'jabatan'])
                             ->required()
                             ->validationMessages([
                                 'required' => 'Penerima surat harus dipilih.',
@@ -261,6 +263,7 @@ class SuratMasukResource extends Resource
                     ->label('Prioritas'),
                 Tables\Filters\SelectFilter::make('penerima')
                     ->relationship('penerimaUser', 'name')
+                    ->getOptionLabelFromRecordUsing(fn(User $record): string => static::formatUserOptionLabel($record))
                     ->label('Penerima')
                     ->preload(),
                 Tables\Filters\TrashedFilter::make(),
@@ -371,108 +374,58 @@ class SuratMasukResource extends Resource
 
                         return $user->canManageDisposisi();
                     }),
-                \Filament\Actions\Action::make('tandaSelesai')
-                    ->label('Selesai')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('Tandai Selesai')
-                    ->modalDescription('Apakah surat ini sudah selesai diproses?')
-                    ->action(function (SuratMasuk $record) {
-                        $record->update(['status' => 'selesai']);
-
-                        $record->disposisis()->where('status', '!=', 'selesai')
-                            ->update(['status' => 'selesai']);
-
-                        foreach ([$record->createdBy, $record->penerimaUser] as $recipient) {
-                            if (! $recipient) {
-                                continue;
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\Action::make('arsipkan')
+                        ->label('Arsipkan')
+                        ->icon('heroicon-o-archive-box-arrow-down')
+                        ->color('gray')
+                        ->requiresConfirmation()
+                        ->modalHeading('Arsipkan Surat')
+                        ->modalDescription('Surat akan dipindahkan ke arsip.')
+                        ->action(function (SuratMasuk $record) {
+                            $record->update(['archived_at' => now()]);
+                            Notification::make()->title('Surat diarsipkan')->success()->send();
+                        })
+                        ->visible(function (SuratMasuk $record): bool {
+                            $user = Auth::user();
+                            if (! $user) {
+                                return false;
                             }
 
-                            Notification::make()
-                                ->title('Surat Masuk Selesai')
-                                ->body("Surat masuk {$record->nomor_surat} telah ditandai selesai")
-                                ->icon('heroicon-o-check-circle')
-                                ->iconColor('success')
-                                ->sendToDatabase($recipient);
-                        }
+                            if ($record->status !== 'selesai' || $record->archived_at) {
+                                return false;
+                            }
 
-                        Notification::make()
-                            ->title('Surat ditandai selesai')
-                            ->success()
-                            ->send();
-                    })
-                    ->visible(function (SuratMasuk $record): bool {
-                        $user = Auth::user();
-                        if (! $user) {
-                            return false;
-                        }
+                            if ($user->hasRole('admin')) {
+                                return true;
+                            }
 
-                        if ($record->status === 'selesai') {
-                            return false;
-                        }
+                            if (! $user->canManageDisposisi()) {
+                                return false;
+                            }
 
-                        // Admin bebas.
-                        if ($user->hasRole('admin')) {
-                            return true;
-                        }
-
-                        if (! $user->canManageDisposisi()) {
-                            return false;
-                        }
-
-                        return $record->disposisis()
-                            ->where('is_tembusan', false)
-                            ->where('status', '!=', 'selesai')
-                            ->where('ke_user_id', $user->id)
-                            ->exists();
-                    }),
-                \Filament\Actions\Action::make('arsipkan')
-                    ->label('Arsipkan')
-                    ->icon('heroicon-o-archive-box-arrow-down')
-                    ->color('gray')
-                    ->requiresConfirmation()
-                    ->modalHeading('Arsipkan Surat')
-                    ->modalDescription('Surat akan dipindahkan ke arsip.')
-                    ->action(function (SuratMasuk $record) {
-                        $record->update(['archived_at' => now()]);
-                        Notification::make()->title('Surat diarsipkan')->success()->send();
-                    })
-                    ->visible(function (SuratMasuk $record): bool {
-                        $user = Auth::user();
-                        if (! $user) {
-                            return false;
-                        }
-
-                        if ($record->status !== 'selesai' || $record->archived_at) {
-                            return false;
-                        }
-
-                        if ($user->hasRole('admin')) {
-                            return true;
-                        }
-
-                        if (! $user->canManageDisposisi()) {
-                            return false;
-                        }
-
-                        // Hanya eksekutor yang berhak mengarsipkan.
-                        return $record->disposisis()
-                            ->where('is_tembusan', false)
-                            ->where('ke_user_id', $user->id)
-                            ->exists();
-                    }),
-                \Filament\Actions\Action::make('lihatFile')
-                    ->label('Lihat File')
-                    ->icon('heroicon-o-document-magnifying-glass')
-                    ->color('info')
-                    ->url(fn(SuratMasuk $record): string => Storage::disk('public')->url($record->file_path))
-                    ->openUrlInNewTab()
-                    ->visible(fn(SuratMasuk $record): bool => filled($record->file_path)),
-                \Filament\Actions\ViewAction::make(),
-                \Filament\Actions\EditAction::make(),
-                \Filament\Actions\DeleteAction::make(),
-                \Filament\Actions\RestoreAction::make(),
+                            // Hanya eksekutor yang berhak mengarsipkan.
+                            return $record->disposisis()
+                                ->where('is_tembusan', false)
+                                ->where('ke_user_id', $user->id)
+                                ->exists();
+                        }),
+                    \Filament\Actions\Action::make('lihatFile')
+                        ->label('Lihat File')
+                        ->icon('heroicon-o-document-magnifying-glass')
+                        ->color('info')
+                        ->url(fn(SuratMasuk $record): string => Storage::disk('public')->url($record->file_path))
+                        ->openUrlInNewTab()
+                        ->visible(fn(SuratMasuk $record): bool => filled($record->file_path)),
+                    \Filament\Actions\ViewAction::make(),
+                    \Filament\Actions\EditAction::make(),
+                    \Filament\Actions\DeleteAction::make(),
+                    \Filament\Actions\RestoreAction::make(),
+                ])
+                    ->label('Menu')
+                    ->size(Size::Small)
+                    ->button()
+                    ->color('warning'),
             ])
             ->bulkActions([
                 \Filament\Actions\BulkActionGroup::make([
@@ -497,6 +450,13 @@ class SuratMasukResource extends Resource
             'view' => Pages\ViewSuratMasuk::route('/{record}'),
             'edit' => Pages\EditSuratMasuk::route('/{record}/edit'),
         ];
+    }
+
+    private static function formatUserOptionLabel(User $user): string
+    {
+        return filled($user->jabatan)
+            ? "{$user->name} - {$user->jabatan}"
+            : $user->name;
     }
 
     public static function getEloquentQuery(): Builder

@@ -8,6 +8,7 @@ use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Size;
 use Filament\Tables;
 use Filament\Tables\Table;
 use UnitEnum;
@@ -103,9 +104,15 @@ class TemplateSuratResource extends Resource
                     ->preload(),
             ])
             ->actions([
-                \Filament\Actions\ViewAction::make(),
-                \Filament\Actions\EditAction::make(),
-                \Filament\Actions\DeleteAction::make(),
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\ViewAction::make(),
+                    \Filament\Actions\EditAction::make(),
+                    \Filament\Actions\DeleteAction::make(),
+                ])
+                    ->label('Menu')
+                    ->size(Size::Small)
+                    ->button()
+                    ->color('warning'),
             ])
             ->bulkActions([
                 \Filament\Actions\BulkActionGroup::make([

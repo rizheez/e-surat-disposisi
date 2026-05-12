@@ -5,9 +5,10 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\KlasifikasiResource\Pages;
 use App\Models\Klasifikasi;
 use Filament\Forms;
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Section;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Support\Enums\Size;
 use Filament\Tables;
 use Filament\Tables\Table;
 use UnitEnum;
@@ -127,8 +128,14 @@ class KlasifikasiResource extends Resource
                     ->label('Status Aktif'),
             ])
             ->actions([
-                \Filament\Actions\EditAction::make(),
-                \Filament\Actions\DeleteAction::make(),
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\EditAction::make(),
+                    \Filament\Actions\DeleteAction::make(),
+                ])
+                    ->label('Menu')
+                    ->size(Size::Small)
+                    ->button()
+                    ->color('warning'),
             ])
             ->bulkActions([
                 \Filament\Actions\BulkActionGroup::make([

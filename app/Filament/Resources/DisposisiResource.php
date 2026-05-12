@@ -11,6 +11,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Size;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -322,14 +323,20 @@ class DisposisiResource extends Resource
                         Notification::make()->title('Disposisi berhasil diteruskan')->success()->send();
                     })
                     ->visible(fn (Disposisi $record): bool => Auth::user()?->can('forward', $record) ?? false),
-                \Filament\Actions\Action::make('lihatSuratMasuk')
-                    ->label('Detail Surat')
-                    ->icon('heroicon-o-document-text')
-                    ->color('gray')
-                    ->url(fn (Disposisi $record): string => static::getSuratMasukUrl($record))
-                    ->openUrlInNewTab(),
-                \Filament\Actions\ViewAction::make(),
-                \Filament\Actions\EditAction::make(),
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\Action::make('lihatSuratMasuk')
+                        ->label('Detail Surat')
+                        ->icon('heroicon-o-document-text')
+                        ->color('gray')
+                        ->url(fn (Disposisi $record): string => static::getSuratMasukUrl($record))
+                        ->openUrlInNewTab(),
+                    \Filament\Actions\ViewAction::make(),
+                    \Filament\Actions\EditAction::make(),
+                ])
+                    ->label('Menu')
+                    ->size(Size::Small)
+                    ->button()
+                    ->color('warning'),
             ])
             ->bulkActions([
                 \Filament\Actions\BulkActionGroup::make([
